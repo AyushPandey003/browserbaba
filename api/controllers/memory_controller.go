@@ -26,10 +26,19 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
+	// Validate request - Skip URL validation if it's a chrome:// or extension:// URL
 	if err := middleware.ValidateStruct(req); err != nil {
-		middleware.ErrorResponse(w, http.StatusBadRequest, err.Error())
-		return
+		// If URL validation fails, check if it's a special browser URL
+		if strings.Contains(err.Error(), "url") &&
+			(strings.HasPrefix(req.URL, "chrome://") ||
+				strings.HasPrefix(req.URL, "chrome-extension://") ||
+				strings.HasPrefix(req.URL, "edge://") ||
+				strings.HasPrefix(req.URL, "about:")) {
+			// Skip URL validation for browser-specific URLs
+		} else {
+			middleware.ErrorResponse(w, http.StatusBadRequest, "Validation error: "+err.Error())
+			return
+		}
 	}
 
 	now := time.Now()
