@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Memory, MemoryType } from '@/lib/types';
 import { MasonryMemoryCard } from '@/components/MasonryMemoryCard';
 import { MemoryModal } from '@/components/MemoryModal';
-import { Search, SlidersHorizontal, Plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
+import debounce from 'lodash.debounce';
+import { FiltersHeader } from './FiltersHeader';
+import { KanbanBoard } from './KanbanBoard';
 
 interface DashboardMasonryClientProps {
   initialMemories: Memory[];
@@ -12,77 +15,153 @@ interface DashboardMasonryClientProps {
 
 export function DashboardMasonryClient({ initialMemories }: DashboardMasonryClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType] = useState<MemoryType | 'all'>('all');
+  const [filterType, setFilterType] = useState<MemoryType | 'all'>('all');
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
 
-  // Filter memories based on search and type
-  const filteredMemories = initialMemories.filter((memory) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      memory.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      memory.content?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter and sort initial memories
+  const processedInitialMemories = useMemo(() => {
+    return initialMemories
+      .filter(m => m.id && m.title) // Filter out invalid memories
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by newest first
+  }, [initialMemories]);
 
-    const matchesType = filterType === 'all' || memory.type === filterType;
+  const [memories, setMemories] = useState<Memory[]>(processedInitialMemories);
+  const [isSearching, setIsSearching] = useState(false);
+  const [useSemanticSearch, setUseSemanticSearch] = useState(false);
+  const [layout, setLayout] = useState<'grid' | 'list' | 'board'>('grid');
 
-    return matchesSearch && matchesType;
-  });
+  // Semantic search function
+  const performSemanticSearchInternal = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 3) {
+      setMemories(processedInitialMemories);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch('/api/semantic-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: query,
+          searchType: 'hybrid',
+          limit: 50,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMemories(data.results || []);
+      } else {
+        console.error('Search failed');
+        setMemories(processedInitialMemories);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setMemories(processedInitialMemories);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [processedInitialMemories]);
+
+  // Debounced semantic search
+  const performSemanticSearch = useMemo(
+    () => debounce(performSemanticSearchInternal, 500),
+    [performSemanticSearchInternal]
+  );
+
+  // Local filtering for simple searches
+  const performLocalSearch = useCallback(() => {
+    const filtered = processedInitialMemories.filter((memory) => {
+      const matchesSearch =
+        !searchQuery.trim() ||
+        memory.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        memory.content?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesType = filterType === 'all' || memory.type === filterType;
+
+      return matchesSearch && matchesType;
+    });
+
+    setMemories(filtered);
+  }, [searchQuery, filterType, processedInitialMemories]);
+
+  // Handle search
+  useEffect(() => {
+    if (useSemanticSearch && searchQuery.length >= 3) {
+      performSemanticSearch(searchQuery);
+    } else {
+      performLocalSearch();
+    }
+  }, [searchQuery, useSemanticSearch, performSemanticSearch, performLocalSearch]);
 
   return (
     <>
-      <main className="flex-1 bg-background-dark">
-        <div className="p-8">
-          {/* Search Bar - Sticky */}
-          <div className="px-4 py-3 sticky top-0 bg-background-dark/80 backdrop-blur-sm z-10 mb-8 -mx-8 -mt-8 pt-8">
-            <div className="max-w-3xl mx-auto">
-              <label className="flex flex-col min-w-40 h-12 w-full">
-                <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
-                  <div className="text-gray-400 flex border-none bg-[#283039] items-center justify-center pl-4 rounded-l-lg border-r-0">
-                    <Search className="w-5 h-5" />
-                  </div>
-                  <input
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-lg text-white focus:outline-0 focus:ring-2 focus:ring-primary border-none bg-[#283039] focus:border-none h-full placeholder:text-gray-400 px-4 text-base font-normal leading-normal"
-                    placeholder="Search like you think..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <button className="ml-2 flex items-center justify-center px-4 rounded-lg bg-[#283039] text-gray-400 hover:text-white transition-colors duration-200">
-                    <SlidersHorizontal className="w-5 h-5" />
-                  </button>
-                </div>
-              </label>
-            </div>
-          </div>
+      <main className="flex-1 bg-background text-foreground w-full max-w-full overflow-x-hidden">
+        <div className="w-full max-w-full h-full flex flex-col">
+          {/* Filters Header */}
+          <FiltersHeader
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterType={filterType}
+            onFilterTypeChange={setFilterType}
+            layout={layout}
+            onLayoutChange={setLayout}
+            useSemanticSearch={useSemanticSearch}
+            onSemanticSearchToggle={() => setUseSemanticSearch(!useSemanticSearch)}
+            isSearching={isSearching}
+            totalMemories={processedInitialMemories.length}
+            filteredCount={memories.length}
+          />
 
-          {/* Masonry Grid */}
-          {filteredMemories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-24 h-24 rounded-full bg-[#283039] flex items-center justify-center mb-6">
-                <Search className="w-12 h-12 text-gray-500" />
+          <div className="p-4 md:p-8 w-full max-w-full flex-1">
+
+            {/* Content */}
+            {memories.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-6">
+                  <Search className="w-12 h-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-2">No Memories Found</h3>
+                <p className="text-muted-foreground max-w-md">
+                  {searchQuery
+                    ? 'Try a different search term or use AI search for broader results.'
+                    : 'Your captured content will appear here. Use the browser extension to save pages, notes, and more.'}
+                </p>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">No memories found</h3>
-              <p className="text-gray-400 max-w-md">
-                {searchQuery
-                  ? 'Try adjusting your search query'
-                  : 'Start capturing content with the browser extension to see it here'}
-              </p>
-            </div>
-          ) : (
-            <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
-              {filteredMemories.map((memory) => (
-                <MasonryMemoryCard
-                  key={memory.id}
-                  memory={memory}
-                  onClick={() => setSelectedMemory(memory)}
+            ) : (
+              layout === 'board' ? (
+                <KanbanBoard
+                  memories={memories}
+                  onMemoryClick={setSelectedMemory}
+                  onMemoriesChange={setMemories}
                 />
-              ))}
-            </div>
-          )}
+              ) : (
+                <div className={layout === 'grid'
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6 w-full auto-rows-max"
+                  : "flex flex-col gap-4"
+                }>
+                  {memories.map((memory) => (
+                    <MasonryMemoryCard
+                      key={memory.id}
+                      memory={memory}
+                      onClick={() => setSelectedMemory(memory)}
+                      layout={layout}
+                    />
+                  ))}
+                </div>
+              )
+            )}
+          </div>
         </div>
       </main>
 
       {/* Floating Action Button */}
-      <button className="fixed bottom-8 right-8 flex items-center justify-center size-14 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-all duration-200 z-20">
-        <Plus className="w-7 h-7" />
+      <button className="fixed bottom-8 right-8 flex items-center justify-center size-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all duration-300 transform hover:scale-110 z-20">
+        <Plus className="w-8 h-8" />
       </button>
 
       {/* Modal */}

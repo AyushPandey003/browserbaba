@@ -6,11 +6,11 @@ export default function SearchLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-[#101922]">
+    <div className="relative flex h-screen w-full max-w-[100vw] bg-background overflow-hidden">
       <Sidebar />
-      <main className="flex-1">
+      <div className="flex-1 w-full overflow-y-auto overflow-x-hidden">
         {children}
-      </main>
+      </div>
     </div>
   );
 }

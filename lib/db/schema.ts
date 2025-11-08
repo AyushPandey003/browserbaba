@@ -3,6 +3,7 @@ import { pgTable, text, timestamp, boolean, bigint, varchar } from "drizzle-orm/
 // Extension memories table - compatible with existing UUID-based schema
 export const memories = pgTable('memories', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }), // Add user reference
   url: text('url'),
   title: text('title').notNull(),
   contentType: varchar('content_type', { length: 50 }).notNull().default('page'),
@@ -28,6 +29,40 @@ export const memories = pgTable('memories', {
   videoUrl: text('video_url'),
   thumbnailUrl: text('thumbnail_url'),
   formattedTimestamp: varchar('formatted_timestamp', { length: 20 }),
+  
+  // Enhanced metadata fields for better scraping
+  domain: varchar('domain', { length: 255 }),
+  favicon: text('favicon'),
+  author: text('author'),
+  publishedDate: timestamp('published_date'),
+  
+  // Rich content fields
+  mainImage: text('main_image'), // Primary image URL
+  images: text('images'), // JSON array of image objects [{src, alt, title}]
+  description: text('description'), // Meta description or excerpt
+  headings: text('headings'), // JSON array of main headings
+  keywords: text('keywords'), // Comma-separated keywords
+  
+  // Product-specific fields
+  price: varchar('price', { length: 100 }),
+  currency: varchar('currency', { length: 10 }),
+  availability: varchar('availability', { length: 50 }),
+  rating: varchar('rating', { length: 20 }),
+  brand: varchar('brand', { length: 255 }),
+  
+  // Article/Reading specific
+  readingTime: varchar('reading_time', { length: 50 }),
+  wordCount: bigint('word_count', { mode: 'number' }),
+  language: varchar('language', { length: 20 }),
+  
+  // Collection organization
+  collection: varchar('collection', { length: 255 }), // e.g., "Research", "Shopping", "Recipes"
+  priority: varchar('priority', { length: 20 }), // "high", "medium", "low"
+  status: varchar('status', { length: 50 }), // "to_read", "reading", "completed", "archived"
+  
+  // Smart categorization hints
+  category: varchar('category', { length: 100 }), // Auto-detected: "shopping", "recipe", "tutorial", etc.
+  subcategory: varchar('subcategory', { length: 100 }),
 });
 
 // Links table for extracted links from pages

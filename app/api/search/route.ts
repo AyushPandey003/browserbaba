@@ -4,9 +4,7 @@ import {
   generateEmbedding,
   generateEmbeddings,
   cosineSimilarity,
-} from '@/backend/embeddings';
-
-export const runtime = 'edge'; // Enable Vercel Edge Runtime for fast responses
+} from '../../../backend/embeddings';
 
 /**
  * POST /api/search - Search memories with filters

@@ -12,7 +12,23 @@
   ],
   "rewrites": [
     {
-      "source": "/api/:path*",
+      "source": "/api/memories/:path*",
+      "destination": "/api/go/memories/:path*"
+    },
+    {
+      "source": "/api/memories",
+      "destination": "/api/go/memories"
+    },
+    {
+      "source": "/api/scrape",
+      "destination": "/api/go/scrape"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/go/health"
+    },
+    {
+      "source": "/api/go/:path*",
       "destination": "/api/index.go"
     }
   ]

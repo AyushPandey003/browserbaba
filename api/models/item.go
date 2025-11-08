@@ -34,12 +34,12 @@ type UpdateItemRequest struct {
 
 // Memory represents saved content from the browser extension
 type Memory struct {
-	ID            int64          `json:"id" db:"id"`
-	URL           string         `json:"url" db:"url" validate:"required,url"`
+	ID            string         `json:"id" db:"id"`
+	URL           sql.NullString `json:"url,omitempty" db:"url"`
 	Title         string         `json:"title" db:"title" validate:"required"`
 	ContentType   string         `json:"content_type" db:"content_type" validate:"required,oneof=page selection video_timestamp links custom"`
-	Content       string         `json:"content" db:"content"`
-	SelectedText  string         `json:"selected_text" db:"selected_text"`
+	Content       sql.NullString `json:"content,omitempty" db:"content"`
+	SelectedText  sql.NullString `json:"selected_text,omitempty" db:"selected_text"`
 	ContextBefore sql.NullString `json:"context_before,omitempty" db:"context_before"`
 	ContextAfter  sql.NullString `json:"context_after,omitempty" db:"context_after"`
 	FullContext   sql.NullString `json:"full_context,omitempty" db:"full_context"`
@@ -65,7 +65,7 @@ type Memory struct {
 
 // CreateMemoryRequest represents the request from the extension
 type CreateMemoryRequest struct {
-	URL           string     `json:"url" validate:"required"`
+	URL           string     `json:"url"`
 	Title         string     `json:"title" validate:"required"`
 	ContentType   string     `json:"content_type" validate:"required"`
 	Content       string     `json:"content"`

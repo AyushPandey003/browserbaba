@@ -31,7 +31,8 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
 
 # vercel
 .vercel
@@ -39,7 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-backend/
 api/__pycache__/index.cpython-312.pyc
 api/__pycache__/index.cpython-313.pyc
 C:/Users/ayush/Desktop/BrowseBaba/browserbaba/uirefrence
@@ -47,3 +47,5 @@ uirefrence/index.html
 migrations/0000_steady_randall_flagg.sql
 migrations/meta/_journal.json
 migrations/meta/0000_snapshot.json
+uirefrence/
+pnpm-lock.yaml

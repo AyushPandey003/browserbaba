@@ -2,7 +2,6 @@ package config
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -31,14 +30,8 @@ func ConnectDB() error {
 		_ = godotenv.Load()
 	}
 
-	postgresURI := os.Getenv("POSTGRES_URI")
+	postgresURI := os.Getenv("DATABASE_URL")
 	if postgresURI == "" {
-		// In production (VERCEL set) we should fail fast and return an error. Locally fall back to
-		// a sensible default for development convenience.
-		if os.Getenv("VERCEL") != "" {
-			return errors.New("POSTGRES_URI not set in environment")
-		}
-		postgresURI = "postgres://postgres:postgres@localhost:5432/golearn?sslmode=disable"
 		log.Println("POSTGRES_URI not set, using default: postgres://postgres:postgres@localhost:5432/golearn?sslmode=disable")
 	}
 
@@ -62,10 +55,9 @@ func ConnectDB() error {
 
 	log.Println("Successfully connected to PostgreSQL!")
 
-	// Create tables if they don't exist
-	if err := createTables(); err != nil {
-		return fmt.Errorf("failed to create tables: %w", err)
-	}
+	// Note: Tables are managed by Next.js/Drizzle ORM
+	// The Go backend uses the existing schema created by the frontend
+	log.Println("Using existing database schema (managed by Next.js/Drizzle)")
 
 	return nil
 }

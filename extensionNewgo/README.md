@@ -53,8 +53,8 @@ A powerful browser extension for saving and organizing web content, with special
 ## ⚙️ Configuration
 
 1. Click the extension icon in your browser toolbar
-2. Enter your Backend API URL (default: `http://localhost:8000`)
-3. Click "Save Config"
+2. The extension is configured to use: `https://browserbaba.vercel.app`
+3. Log in through the extension to start saving content
 
 ## 📖 Usage
 

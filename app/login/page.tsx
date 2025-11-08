@@ -1,18 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Brain, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  // Get the redirect URL from query params, default to dashboard
+  const redirectTo = searchParams.get('from') || '/dashboard';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,14 +36,14 @@ export default function LoginPage() {
           password: formData.password,
           name: formData.name,
         });
-        router.push('/dashboard');
+        router.push(redirectTo);
       } else {
         // Sign in
         await authClient.signIn.email({
           email: formData.email,
           password: formData.password,
         });
-        router.push('/dashboard');
+        router.push(redirectTo);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
@@ -55,7 +59,7 @@ export default function LoginPage() {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: '/dashboard',
+        callbackURL: redirectTo,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Social sign in failed');
@@ -64,11 +68,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#101922] to-[#1a232c] flex items-center justify-center p-4">
+    <div className="min-h-screen b-to-br from-[#101922] to-[#1a232c] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#2b8cee] to-[#1e6bb8] shadow-2xl mb-4">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-[#2b8cee] to-[#1e6bb8] shadow-2xl mb-4">
             <Brain className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Welcome to Synapse</h1>
@@ -261,5 +265,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-linear-to-br from-[#101922] to-[#1a232c] flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

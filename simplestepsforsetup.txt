@@ -1,0 +1,35 @@
+git clone repo or download zip file from github
+unzip if downloaded as zip file
+cd into the project directory
+npm install or pnpm install
+add environment variables to .env file
+run seed script if needed
+npm run seed
+or
+pnpm run seed
+start the development server
+npm run dev
+or
+pnpm run dev
+open browser and go to localhost:3000
+load unpacked extension in browser settings
+go to extensions in browser settings
+enable developer mode
+click on load unpacked
+select the project directory
+test the extension functionality
+
+minimum requirements:
+
+
+nodejs installed
+go installed
+npm or pnpm installed
+modern web browser (chrome, firefox, etc)
+git installed
+github account (for forking the repository)
+text editor or IDE (vscode, etc)
+familiarity with command line interface
+basic knowledge of javascript, typescript, react, and web development
+optional:
+knowledge of browser extension development
