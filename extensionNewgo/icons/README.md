@@ -1,40 +1,25 @@
-# Extension Icons
+# Icon Placeholders
 
-Place your extension icons here with the following sizes:
+Please add the following icon files to this directory:
 
-- `icon16.png` - 16x16 pixels (toolbar)
-- `icon48.png` - 48x48 pixels (extension management)
-- `icon128.png` - 128x128 pixels (Chrome Web Store)
+- `icon16.png` - 16x16 pixels
+- `icon48.png` - 48x48 pixels  
+- `icon128.png` - 128x128 pixels
 
-## Design Guidelines
+You can use any image editor or online tool to create these icons. Recommended colors match the extension theme:
+- Primary: #667eea (purple)
+- Secondary: #764ba2 (darker purple/pink)
 
-- Use simple, recognizable imagery
-- Ensure icons are clear at small sizes
-- Use consistent colors across all sizes
-- Consider using a color scheme that matches your brand:
-  - Primary: #667eea (purple)
-  - Secondary: #4CAF50 (green)
-  - Accent: #ffeb3b (yellow for highlights)
+Or you can use a simple circle or memory/brain icon design.
 
-## Quick Icon Generation
+## Temporary Solution
 
-You can use online tools like:
+For now, you can:
+1. Create simple colored squares with the sizes above
+2. Use the Vite logo from the old extension
+3. Design custom icons later
+
+## Online Icon Generators
+- https://favicon.io/
 - https://www.favicon-generator.org/
 - https://realfavicongenerator.net/
-- https://app.logo.com/
-
-Or create them with design tools:
-- Figma
-- Adobe Illustrator
-- Inkscape (free)
-- GIMP (free)
-
-## Placeholder Icons
-
-Until custom icons are created, you can use Unicode emoji as placeholders:
-- 📚 (Books) - For content saving
-- 🎥 (Video) - For video features
-- 💾 (Floppy Disk) - For saving
-- 📝 (Memo) - For notes
-
-Convert emoji to PNG using: https://favicon.io/emoji-favicons/

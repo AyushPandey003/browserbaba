@@ -1,370 +1,410 @@
-// Load saved configuration
+/* global chrome */
+// Popup script for Memory Capture Extension - Vanilla JavaScript
+
+import authManager from './auth.js';
+
+const STORAGE_KEY = 'memory_capture_data';
+
+let memories = [];
+let loading = true;
+let error = null;
+let searchTerm = '';
+let currentUser = null;
+
+// DOM Elements
+const savePageBtn = document.getElementById('save-page-btn');
+const saveBtnText = document.getElementById('save-btn-text');
+const searchInput = document.getElementById('search-input');
+const memoriesList = document.getElementById('memories-list');
+const statsText = document.getElementById('stats-text');
+const errorBanner = document.getElementById('error-banner');
+const authSection = document.getElementById('auth-section');
+const userInfo = document.getElementById('user-info');
+const userName = document.getElementById('user-name');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const verifyBtn = document.getElementById('verify-btn');
+
+// Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-    // Load API URL from storage
-    const config = await chrome.storage.sync.get(['apiUrl']);
-    if (config.apiUrl) {
-        document.getElementById('apiUrl').value = config.apiUrl;
-    } else {
-        document.getElementById('apiUrl').value = 'http://localhost:8000';
-    }
-
-    // Load current page info
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) {
-        document.getElementById('currentUrl').textContent = tab.url;
-        document.getElementById('currentTitle').textContent = tab.title;
-
-        // Check for video on page
-        await checkForVideo(tab);
-    }
-
-    // Load recent items
-    loadRecentItems();
-
-    // Set up event listeners
-    setupEventListeners();
+  await authManager.init();
+  setupEventListeners();
+  setupAuthListeners();
+  await checkAuthStatus();
 });
-
-// Check if current page has video content
-async function checkForVideo(tab) {
-    try {
-        const [result] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                return window.getVideoTimestamp ? window.getVideoTimestamp() : { hasVideo: false };
-            }
-        });
-
-        const videoData = result.result;
-        const videoInfo = document.getElementById('videoInfo');
-
-        if (videoData.hasVideo) {
-            videoInfo.style.display = 'block';
-            document.getElementById('videoPlatform').textContent = videoData.platform;
-            document.getElementById('videoTimestamp').textContent = formatTimestamp(videoData.timestamp);
-            document.getElementById('videoDuration').textContent = formatTimestamp(videoData.duration);
-            
-            if (videoData.videoTitle) {
-                document.getElementById('videoTitle').textContent = videoData.videoTitle;
-            }
-
-            // Show video bookmark button
-            document.getElementById('saveVideoButton').style.display = 'block';
-            document.getElementById('saveVideoButton').onclick = () => saveVideoBookmark(tab, videoData);
-        } else {
-            videoInfo.style.display = 'none';
-            document.getElementById('saveVideoButton').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error checking for video:', error);
-    }
-}
-
-// Save configuration
-document.getElementById('saveConfig').addEventListener('click', async () => {
-    const apiUrl = document.getElementById('apiUrl').value;
-    await chrome.storage.sync.set({ apiUrl });
-    showStatus('Configuration saved!', 'success');
-});
-
-async function saveVideoBookmark(tab, videoData) {
-    const button = document.getElementById('saveVideoButton');
-    button.disabled = true;
-    button.textContent = 'Saving...';
-
-    try {
-        const config = await chrome.storage.sync.get(['apiUrl']);
-        const apiUrl = config.apiUrl || 'http://localhost:8000';
-
-        const dataToSend = {
-            url: tab.url,
-            title: tab.title,
-            content_type: 'video_timestamp',
-            content: `${videoData.videoTitle || tab.title} at ${formatTimestamp(videoData.timestamp)}`,
-            selected_text: '',
-            links: [],
-            tags: ['video', videoData.platform.toLowerCase()],
-            notes: document.getElementById('notes').value || `Video bookmark at ${formatTimestamp(videoData.timestamp)}`,
-            video_data: {
-                platform: videoData.platform,
-                timestamp: videoData.timestamp,
-                duration: videoData.duration,
-                video_title: videoData.videoTitle,
-                video_url: videoData.videoUrl,
-                thumbnail_url: videoData.thumbnailUrl,
-                formatted_timestamp: formatTimestamp(videoData.timestamp)
-            },
-            scraped_at: new Date().toISOString()
-        };
-
-        const response = await fetch(`${apiUrl}/api/scrape`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSend)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        await saveToRecent(dataToSend);
-        document.getElementById('notes').value = '';
-        showStatus('Video bookmark saved!', 'success');
-        loadRecentItems();
-
-    } catch (error) {
-        console.error('Error:', error);
-        showStatus(`Error: ${error.message}`, 'error');
-    } finally {
-        button.disabled = false;
-        button.textContent = 'Save Video Bookmark';
-    }
-}
 
 function setupEventListeners() {
-    // Content type change
-    document.getElementById('contentType').addEventListener('change', (e) => {
-        const customSelectorGroup = document.getElementById('customSelectorGroup');
-        if (e.target.value === 'custom') {
-            customSelectorGroup.style.display = 'block';
-        } else {
-            customSelectorGroup.style.display = 'none';
-        }
-    });
-
-    // Scrape button
-    document.getElementById('scrapeButton').addEventListener('click', scrapeAndSave);
+  savePageBtn.addEventListener('click', saveCurrentPage);
+  searchInput.addEventListener('input', handleSearch);
 }
 
-async function scrapeAndSave() {
-    const button = document.getElementById('scrapeButton');
-    button.disabled = true;
-    button.textContent = 'Saving...';
-
-    try {
-        // Get current tab
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-        // Get form values
-        const contentType = document.getElementById('contentType').value;
-        const customSelector = document.getElementById('customSelector').value;
-        const tags = document.getElementById('tags').value;
-        const notes = document.getElementById('notes').value;
-
-        // Inject content script and get data
-        const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: extractContent,
-            args: [contentType, customSelector]
-        });
-
-        const scrapedData = results[0].result;
-
-        // Prepare data to send
-        const dataToSend = {
-            url: tab.url,
-            title: tab.title,
-            content_type: contentType,
-            content: scrapedData.content,
-            links: scrapedData.links || [],
-            selected_text: scrapedData.selectedText || '',
-            tags: tags.split(',').map(t => t.trim()).filter(t => t),
-            notes: notes,
-            scraped_at: new Date().toISOString()
-        };
-
-        // Add selection context if available
-        if (scrapedData.selectionContext) {
-            dataToSend.context_before = scrapedData.selectionContext.beforeContext;
-            dataToSend.context_after = scrapedData.selectionContext.afterContext;
-            dataToSend.full_context = scrapedData.selectionContext.fullContext;
-            dataToSend.element_type = scrapedData.selectionContext.elementType;
-            dataToSend.page_section = scrapedData.selectionContext.pageSection;
-            dataToSend.xpath = scrapedData.selectionContext.xpath;
-        }
-
-        // Add video data if available
-        if (scrapedData.videoData && scrapedData.videoData.hasVideo) {
-            dataToSend.video_data = {
-                platform: scrapedData.videoData.platform,
-                timestamp: scrapedData.videoData.timestamp,
-                duration: scrapedData.videoData.duration,
-                video_title: scrapedData.videoData.videoTitle,
-                video_url: scrapedData.videoData.videoUrl,
-                thumbnail_url: scrapedData.videoData.thumbnailUrl,
-                formatted_timestamp: formatTimestamp(scrapedData.videoData.timestamp)
-            };
-        }
-
-        // Get API URL
-        const config = await chrome.storage.sync.get(['apiUrl']);
-        const apiUrl = config.apiUrl || 'http://localhost:8000';
-
-        // Send to backend
-        const response = await fetch(`${apiUrl}/api/scrape`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSend)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        // Save to local storage for recent items
-        await saveToRecent(dataToSend);
-
-        // Clear form
-        document.getElementById('tags').value = '';
-        document.getElementById('notes').value = '';
-
-        showStatus('Content saved successfully!', 'success');
-        loadRecentItems();
-
-    } catch (error) {
-        console.error('Error:', error);
-        showStatus(`Error: ${error.message}`, 'error');
-    } finally {
-        button.disabled = false;
-        button.textContent = 'Save Content';
+function setupAuthListeners() {
+  // Subscribe to auth state changes
+  authManager.subscribe((user) => {
+    currentUser = user;
+    updateAuthUI();
+    if (user) {
+      loadMemories();
     }
+  });
+
+  loginBtn?.addEventListener('click', () => {
+    authManager.openAuthPage();
+  });
+
+  logoutBtn?.addEventListener('click', async () => {
+    await authManager.signOut();
+    memories = [];
+    renderMemories();
+  });
+
+  verifyBtn?.addEventListener('click', async () => {
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying...';
+    await checkAuthStatus();
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Verify Session';
+  });
 }
 
-// Function to inject into page
-function extractContent(contentType, customSelector) {
-    const result = {
-        content: '',
-        links: [],
-        selectedText: '',
-        selectionContext: null,
-        videoData: null
+async function checkAuthStatus() {
+  const isAuthenticated = await authManager.verifySession();
+  updateAuthUI();
+  return isAuthenticated;
+}
+
+function updateAuthUI() {
+  if (currentUser) {
+    authSection?.classList.add('hidden');
+    userInfo?.classList.remove('hidden');
+    userName.textContent = currentUser.name || currentUser.email;
+    savePageBtn.disabled = false;
+  } else {
+    authSection?.classList.remove('hidden');
+    userInfo?.classList.add('hidden');
+    savePageBtn.disabled = true;
+  }
+}
+
+// Load memories from chrome.storage
+async function loadMemories() {
+  try {
+    loading = true;
+    error = null;
+    renderMemories();
+
+    if (!currentUser) {
+      memories = [];
+      loading = false;
+      renderMemories();
+      return;
+    }
+
+    // Load user-specific memories
+    const userStorageKey = `${STORAGE_KEY}_${currentUser.id}`;
+    const result = await chrome.storage.local.get(userStorageKey);
+    memories = result[userStorageKey] || [];
+    
+    loading = false;
+    updateStats();
+    renderMemories();
+  } catch (err) {
+    console.error('Error loading memories:', err);
+    error = 'Failed to load memories';
+    loading = false;
+    showError(error);
+    renderMemories();
+  }
+}
+
+// Update stats
+function updateStats() {
+  const count = memories.length;
+  statsText.textContent = `${count} ${count === 1 ? 'memory' : 'memories'} saved`;
+}
+
+// Save current page
+async function saveCurrentPage() {
+  try {
+    // Check authentication first
+    if (!currentUser) {
+      showError('Please log in to save memories');
+      authManager.openAuthPage();
+      return;
+    }
+
+    savePageBtn.disabled = true;
+    saveBtnText.textContent = 'Saving...';
+    hideError();
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    // Check if URL is valid
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || 
+        tab.url.startsWith('edge://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
+      throw new Error('Cannot save browser internal pages');
+    }
+
+    // Get page content from content script if available
+    let pageContent = '';
+    let metadata = {};
+    
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapePage' });
+      if (response) {
+        pageContent = response.scrapedText || '';
+        metadata = response.metadata || {};
+      }
+    } catch (err) {
+      console.log('Could not scrape page content:', err);
+    }
+
+    // Get favicon
+    let favicon = null;
+    if (tab.favIconUrl && !tab.favIconUrl.startsWith('chrome://')) {
+      favicon = tab.favIconUrl;
+    }
+
+    const memoryData = {
+      id: Date.now(),
+      user_id: currentUser.id, // Add user ID
+      url: tab.url,
+      page_title: tab.title || 'Untitled',
+      title: tab.title || 'Untitled',
+      content_type: 'page',
+      selected_text: pageContent.substring(0, 500),
+      content: pageContent,
+      favicon: favicon,
+      tags: [],
+      metadata: metadata,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
-    // Get video data if available
-    if (window.getVideoTimestamp) {
-        result.videoData = window.getVideoTimestamp();
-    }
-
-    switch (contentType) {
-        case 'page':
-            result.content = document.body.innerText;
-            break;
-
-        case 'selection':
-            if (window.getSelectionWithContext) {
-                result.selectionContext = window.getSelectionWithContext();
-                result.selectedText = result.selectionContext.selectedText;
-                result.content = result.selectedText;
-            } else {
-                const selection = window.getSelection();
-                result.selectedText = selection.toString();
-                result.content = result.selectedText;
-            }
-            break;
-
-        case 'links':
-            const links = document.querySelectorAll('a');
-            result.links = Array.from(links).map(link => ({
-                text: link.textContent.trim(),
-                href: link.href,
-                title: link.title
-            }));
-            result.content = JSON.stringify(result.links, null, 2);
-            break;
-
-        case 'custom':
-            if (customSelector) {
-                const elements = document.querySelectorAll(customSelector);
-                result.content = Array.from(elements)
-                    .map(el => el.innerText)
-                    .join('\n\n');
-            }
-            break;
-    }
-
-    return result;
-}
-
-async function saveToRecent(data) {
-    const recent = await chrome.storage.local.get(['recentItems']);
-    let recentItems = recent.recentItems || [];
-
-    // Add new item to beginning
-    recentItems.unshift({
-        title: data.title,
-        url: data.url,
-        timestamp: Date.now()
+    // Save to API via background script
+    const response = await chrome.runtime.sendMessage({
+      action: 'saveMemoryToAPI',
+      data: memoryData
     });
 
-    // Keep only last 10 items
-    recentItems = recentItems.slice(0, 10);
-
-    await chrome.storage.local.set({ recentItems });
-}
-
-async function loadRecentItems() {
-    const recent = await chrome.storage.local.get(['recentItems']);
-    const recentItems = recent.recentItems || [];
-
-    const container = document.getElementById('recentItems');
-
-    if (recentItems.length === 0) {
-        container.innerHTML = '<p style="color: #999; font-size: 12px;">No recent items</p>';
-        return;
+    if (!response || !response.success) {
+      throw new Error(response?.error || 'Failed to save to server');
     }
 
-    container.innerHTML = recentItems.map(item => `
-        <div class="recent-item">
-            <div class="item-title">${escapeHtml(item.title)}</div>
-            <div class="item-url">${escapeHtml(item.url)}</div>
-            <div class="item-time">${formatTime(item.timestamp)}</div>
-        </div>
-    `).join('');
-}
+    // Also save to local storage for offline access (user-specific key)
+    const userStorageKey = `${STORAGE_KEY}_${currentUser.id}`;
+    memories.unshift(memoryData);
+    await chrome.storage.local.set({ [userStorageKey]: memories });
 
-function showStatus(message, type) {
-    const status = document.getElementById('status');
-    status.textContent = message;
-    status.className = `status ${type}`;
+    // Notify content script
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showNotification',
+        data: { message: 'Saved to your memories!', type: 'success' }
+      });
+    } catch (e) {
+      // Content script might not be loaded
+    }
 
+    await loadMemories();
+    
+    savePageBtn.disabled = false;
+    saveBtnText.textContent = 'Saved! ✓';
+    
     setTimeout(() => {
-        status.style.display = 'none';
-    }, 3000);
+      saveBtnText.textContent = 'Save This Page';
+    }, 2000);
+
+  } catch (err) {
+    console.error('Error saving page:', err);
+    const errorMsg = err.message || 'Failed to save page';
+    showError(errorMsg);
+    
+    savePageBtn.disabled = false;
+    saveBtnText.textContent = 'Save This Page';
+  }
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// Delete memory
+async function deleteMemory(id) {
+  if (!confirm('Delete this memory?')) return;
+
+  try {
+    if (!currentUser) return;
+    
+    const userStorageKey = `${STORAGE_KEY}_${currentUser.id}`;
+    memories = memories.filter(m => m.id !== id);
+    await chrome.storage.local.set({ [userStorageKey]: memories });
+    await loadMemories();
+  } catch (err) {
+    console.error('Error deleting memory:', err);
+    showError('Failed to delete memory');
+  }
 }
 
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
+// Open memory URL
+function openMemory(url) {
+  chrome.tabs.create({ url });
+}
+
+// Handle search
+function handleSearch(e) {
+  searchTerm = e.target.value.toLowerCase();
+  renderMemories();
+}
+
+// Render memories
+function renderMemories() {
+  if (loading) {
+    memoriesList.innerHTML = '<div class="loading">Loading memories...</div>';
+    return;
+  }
+
+  if (error) {
+    memoriesList.innerHTML = `
+      <div class="empty-state">
+        <p>Error loading memories</p>
+        <p class="hint">${escapeHtml(error)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Filter memories by search term
+  const filteredMemories = memories.filter(memory =>
+    memory.page_title?.toLowerCase().includes(searchTerm) ||
+    memory.selected_text?.toLowerCase().includes(searchTerm) ||
+    memory.url?.toLowerCase().includes(searchTerm) ||
+    memory.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
+  );
+
+  if (filteredMemories.length === 0) {
+    memoriesList.innerHTML = `
+      <div class="empty-state">
+        <p>${searchTerm ? 'No memories found' : 'No memories yet'}</p>
+        <p class="hint">${searchTerm ? 'Try a different search term' : 'Save this page to get started'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  memoriesList.innerHTML = filteredMemories.map(memory => createMemoryCard(memory)).join('');
+
+  // Add event listeners
+  filteredMemories.forEach(memory => {
+    const card = document.querySelector(`.memory-card[data-id="${memory.id}"]`);
+    if (!card) return;
+
+    const deleteBtn = card.querySelector('.memory-delete-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteMemory(memory.id);
+      });
+    }
+
+    card.addEventListener('click', (e) => {
+      if (!e.target.closest('.memory-delete-btn')) {
+        openMemory(memory.url);
+      }
+    });
+  });
+}
+
+// Create memory card HTML
+function createMemoryCard(memory) {
+  const safeMemory = {
+    id: memory.id || Date.now(),
+    favicon: memory.favicon || '',
+    page_title: memory.page_title || 'Untitled',
+    created_at: memory.created_at || new Date().toISOString(),
+    selected_text: memory.selected_text || '',
+    tags: memory.tags || [],
+    content_type: memory.content_type || 'page',
+    url: memory.url || '#'
+  };
+
+  const textPreview = safeMemory.selected_text
+    ? `<p class="memory-text">${escapeHtml(safeMemory.selected_text.substring(0, 100))}${safeMemory.selected_text.length > 100 ? '...' : ''}</p>`
+    : '';
+
+  const tagsHtml = safeMemory.tags.length > 0
+    ? `<div class="memory-tags">${safeMemory.tags.map(tag => `<span class="memory-tag">${escapeHtml(tag)}</span>`).join('')}</div>`
+    : '';
+
+  const urlDisplay = getUrlDisplay(safeMemory.url);
+
+  return `
+    <div class="memory-card" data-id="${safeMemory.id}">
+      <div class="memory-header">
+        ${safeMemory.favicon ? `<img src="${safeMemory.favicon}" alt="" class="memory-favicon">` : ''}
+        <div class="memory-meta">
+          <h3 class="memory-title">${escapeHtml(safeMemory.page_title)}</h3>
+          <span class="memory-time">${formatDate(safeMemory.created_at)}</span>
+        </div>
+        <button class="memory-delete-btn" title="Delete">×</button>
+      </div>
+      ${textPreview}
+      ${tagsHtml}
+      <div class="memory-footer">
+        <span class="memory-type">${safeMemory.content_type}</span>
+        <span class="memory-url" title="${escapeHtml(safeMemory.url)}">${escapeHtml(urlDisplay)}</span>
+      </div>
+    </div>
+  `;
+}
+
+// Get URL display (domain only)
+function getUrlDisplay(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch {
+    return url.substring(0, 30) + '...';
+  }
+}
+
+// Format date
+function formatDate(dateString) {
+  if (!dateString) return 'Unknown';
+
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Unknown';
+
     const now = new Date();
     const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
 
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
     return date.toLocaleDateString();
+  } catch {
+    return 'Unknown';
+  }
 }
 
-function formatTimestamp(seconds) {
-    if (!seconds && seconds !== 0) return '0:00';
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    
-    if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+// Escape HTML
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+// Show error
+function showError(message) {
+  error = message;
+  errorBanner.textContent = message;
+  errorBanner.style.display = 'block';
+}
+
+// Hide error
+function hideError() {
+  error = null;
+  errorBanner.style.display = 'none';
 }

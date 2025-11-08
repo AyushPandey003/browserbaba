@@ -3,6 +3,7 @@ import { pgTable, text, timestamp, boolean, bigint, varchar } from "drizzle-orm/
 // Extension memories table - compatible with existing UUID-based schema
 export const memories = pgTable('memories', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }), // Add user reference
   url: text('url'),
   title: text('title').notNull(),
   contentType: varchar('content_type', { length: 50 }).notNull().default('page'),

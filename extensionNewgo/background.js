@@ -1,358 +1,413 @@
-// Background service worker for the extension
+/* global chrome */
+// Background service worker for Memory Capture Extension
 
-// Listen for extension installation
-chrome.runtime.onInstalled.addListener(() => {
-    console.log('Web Content Scraper extension installed');
+import authManager from './auth.js';
 
-    // Create context menu items
-    chrome.contextMenus.create({
-        id: 'saveSelection',
-        title: 'Save selected text',
-        contexts: ['selection']
-    });
+const API_BASE_URL = 'https://browserbaba.vercel.app/api';
 
-    chrome.contextMenus.create({
-        id: 'saveSelectionWithVideo',
-        title: 'Save with video timestamp',
-        contexts: ['selection']
-    });
+// Initialize auth manager on install/startup
+chrome.runtime.onInstalled.addListener(async () => {
+  await authManager.init();
+  
+  // Create context menu for text selection
+  chrome.contextMenus.create({
+    id: 'save-selected-text',
+    title: 'Save to Memories',
+    contexts: ['selection']
+  });
 
-    chrome.contextMenus.create({
-        id: 'saveVideoTimestamp',
-        title: 'Save current video timestamp',
-        contexts: ['page', 'video']
-    });
+  // Create context menu for images
+  chrome.contextMenus.create({
+    id: 'save-image',
+    title: 'Save Image to Memories',
+    contexts: ['image']
+  });
 
-    chrome.contextMenus.create({
-        id: 'savePage',
-        title: 'Save entire page',
-        contexts: ['page']
-    });
+  // Create context menu for links
+  chrome.contextMenus.create({
+    id: 'save-link',
+    title: 'Save Link to Memories',
+    contexts: ['link']
+  });
 
-    chrome.contextMenus.create({
-        id: 'quickHighlight',
-        title: 'Highlight selection',
-        contexts: ['selection']
-    });
+  // Create context menu for page
+  chrome.contextMenus.create({
+    id: 'save-page',
+    title: 'Save Page to Memories',
+    contexts: ['page']
+  });
+
+  console.log('Memory Capture extension installed');
+});
+
+// Initialize on startup
+chrome.runtime.onStartup.addListener(async () => {
+  await authManager.init();
 });
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    switch (info.menuItemId) {
-        case 'saveSelection':
-            await handleSaveSelection(info, tab, false);
-            break;
-        case 'saveSelectionWithVideo':
-            await handleSaveSelection(info, tab, true);
-            break;
-        case 'saveVideoTimestamp':
-            await handleSaveVideoTimestamp(tab);
-            break;
-        case 'savePage':
-            await handleSavePage(tab);
-            break;
-        case 'quickHighlight':
-            await handleQuickHighlight(tab);
-            break;
+  try {
+    // Check authentication by verifying session with backend
+    const isAuthenticated = await authManager.verifySession();
+    
+    if (!isAuthenticated) {
+      // Open auth page
+      authManager.openAuthPage();
+      
+      // Try to send notification to content script
+      try {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'showNotification',
+          data: { message: 'Please log in to save memories', type: 'error' }
+        }).catch(() => {});
+      } catch (e) {
+        // Silently fail
+      }
+      return;
     }
+
+    // Check if URL is valid
+    const url = tab.url || info.pageUrl;
+    if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') || 
+        url.startsWith('edge://') || url.startsWith('about:')) {
+      console.log('Cannot save browser internal pages');
+      return;
+    }
+
+    let memoryData = {
+      url: url,
+      title: tab.title || 'Untitled',
+      content_type: 'page',
+      selected_text: '',
+      tags: [],
+      scraped_at: new Date().toISOString()
+    };
+
+    if (info.menuItemId === 'save-selected-text') {
+      memoryData.selected_text = info.selectionText;
+      memoryData.content_type = 'text';
+    } else if (info.menuItemId === 'save-image') {
+      memoryData.content_type = 'image';
+      memoryData.selected_text = info.srcUrl;
+      memoryData.content = info.srcUrl;
+    } else if (info.menuItemId === 'save-link') {
+      memoryData.selected_text = info.linkUrl;
+      memoryData.content_type = 'link';
+      memoryData.content = info.linkUrl;
+    } else if (info.menuItemId === 'save-page') {
+      memoryData.content_type = 'page';
+    }
+
+    // Save to API
+    await saveMemoryToAPI(memoryData);
+
+    // Try to send notification to content script
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showNotification',
+        data: { message: 'Saved to memories!', type: 'success' }
+      }).catch(() => {
+        console.log('Content script not available for notification');
+      });
+    } catch (e) {
+      // Silently fail
+    }
+
+  } catch (error) {
+    console.error('Error handling context menu click:', error);
+    
+    // Try to show error notification
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showNotification',
+        data: { message: 'Failed to save: ' + error.message, type: 'error' }
+      }).catch(() => {});
+    } catch (e) {
+      // Silently fail
+    }
+  }
 });
 
-async function handleSaveSelection(info, tab, includeVideo) {
+// Handle keyboard shortcuts
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'save-selection') {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tab || !tab.id) return;
+
+    // Check authentication by verifying session with backend
+    const isAuthenticated = await authManager.verifySession();
+    
+    if (!isAuthenticated) {
+      authManager.openAuthPage();
+      
+      try {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'showNotification',
+          data: { message: 'Please log in to save memories', type: 'error' }
+        }).catch(() => {});
+      } catch (e) {
+        // Silently fail
+      }
+      return;
+    }
+
+    // Check if URL is valid
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+      return;
+    }
+
+    // Get selected text from content script
     try {
-        const config = await chrome.storage.sync.get(['apiUrl']);
-        const apiUrl = config.apiUrl || 'http://localhost:8000';
-
-        // Get selection context
-        const [contextResult] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                return window.getSelectionWithContext ? window.getSelectionWithContext() : {
-                    selectedText: window.getSelection().toString()
-                };
-            }
-        });
-
-        const selectionData = contextResult.result;
-
-        // Get video timestamp if requested
-        let videoData = null;
-        if (includeVideo) {
-            const [videoResult] = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: () => {
-                    return window.getVideoTimestamp ? window.getVideoTimestamp() : { hasVideo: false };
-                }
-            });
-            videoData = videoResult.result;
-        }
-
-        const dataToSend = {
-            url: tab.url,
-            title: tab.title,
-            content_type: 'selection',
-            content: selectionData.selectedText || info.selectionText,
-            selected_text: selectionData.selectedText || info.selectionText,
-            context_before: selectionData.beforeContext || '',
-            context_after: selectionData.afterContext || '',
-            full_context: selectionData.fullContext || '',
-            element_type: selectionData.elementType || '',
-            page_section: selectionData.pageSection || '',
-            xpath: selectionData.xpath || '',
-            links: [],
-            tags: [],
-            notes: includeVideo && videoData?.hasVideo ? 
-                `Saved from ${videoData.platform} at ${formatTimestamp(videoData.timestamp)}` : 
-                'Saved via context menu',
-            video_data: videoData && videoData.hasVideo ? {
-                platform: videoData.platform,
-                timestamp: videoData.timestamp,
-                duration: videoData.duration,
-                video_title: videoData.videoTitle,
-                video_url: videoData.videoUrl,
-                thumbnail_url: videoData.thumbnailUrl,
-                formatted_timestamp: formatTimestamp(videoData.timestamp)
-            } : null,
-            scraped_at: new Date().toISOString()
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'getSelectedText' });
+      
+      if (response && response.text) {
+        const memoryData = {
+          url: tab.url,
+          title: tab.title,
+          content_type: 'text',
+          selected_text: response.text,
+          tags: [],
+          scraped_at: new Date().toISOString()
         };
 
-        const response = await fetch(`${apiUrl}/api/scrape`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSend)
-        });
-
-        if (response.ok) {
-            // Highlight the saved text
-            await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: () => {
-                    if (window.highlightSelectedText) {
-                        window.highlightSelectedText();
-                    }
-                }
-            });
-
-            // Show notification
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon48.png',
-                title: 'Content Saved',
-                message: videoData?.hasVideo ? 
-                    `Saved with timestamp: ${formatTimestamp(videoData.timestamp)}` : 
-                    'Selected text saved successfully!'
-            });
-        }
+        await saveMemoryToAPI(memoryData);
+        
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'showNotification',
+          data: { message: 'Selection saved!', type: 'success' }
+        }).catch(() => {});
+      }
     } catch (error) {
-        console.error('Error saving selection:', error);
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Error',
-            message: 'Failed to save content: ' + error.message
-        });
+      console.error('Error saving selection:', error);
+      
+      try {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'showNotification',
+          data: { message: 'Failed to save: ' + error.message, type: 'error' }
+        }).catch(() => {});
+      } catch (e) {
+        // Silently fail
+      }
     }
-}
+  }
+});
 
-async function handleSaveVideoTimestamp(tab) {
-    try {
-        const config = await chrome.storage.sync.get(['apiUrl']);
-        const apiUrl = config.apiUrl || 'http://localhost:8000';
-
-        // Get video timestamp
-        const [videoResult] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                return window.getVideoTimestamp ? window.getVideoTimestamp() : { hasVideo: false };
-            }
-        });
-
-        const videoData = videoResult.result;
-
-        if (!videoData.hasVideo) {
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon48.png',
-                title: 'No Video Found',
-                message: 'Could not detect a video on this page.'
-            });
-            return;
-        }
-
-        const dataToSend = {
-            url: tab.url,
-            title: tab.title,
-            content_type: 'video_timestamp',
-            content: `${videoData.videoTitle || tab.title} at ${formatTimestamp(videoData.timestamp)}`,
-            selected_text: '',
-            links: [],
-            tags: ['video', videoData.platform.toLowerCase()],
-            notes: `Video bookmark at ${formatTimestamp(videoData.timestamp)}`,
-            video_data: {
-                platform: videoData.platform,
-                timestamp: videoData.timestamp,
-                duration: videoData.duration,
-                video_title: videoData.videoTitle,
-                video_url: videoData.videoUrl,
-                thumbnail_url: videoData.thumbnailUrl,
-                formatted_timestamp: formatTimestamp(videoData.timestamp)
-            },
-            scraped_at: new Date().toISOString()
-        };
-
-        const response = await fetch(`${apiUrl}/api/scrape`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSend)
-        });
-
-        if (response.ok) {
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon48.png',
-                title: 'Video Bookmark Saved',
-                message: `Saved at ${formatTimestamp(videoData.timestamp)}`
-            });
-        }
-    } catch (error) {
-        console.error('Error saving video timestamp:', error);
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Error',
-            message: 'Failed to save video timestamp: ' + error.message
-        });
-    }
-}
-
-async function handleQuickHighlight(tab) {
-    try {
-        await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                if (window.highlightSelectedText) {
-                    window.highlightSelectedText();
-                }
-            }
-        });
-
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Text Highlighted',
-            message: 'Selection has been highlighted'
-        });
-    } catch (error) {
-        console.error('Error highlighting:', error);
-    }
-}
-
-async function handleSavePage(tab) {
-    try {
-        const config = await chrome.storage.sync.get(['apiUrl']);
-        const apiUrl = config.apiUrl || 'http://localhost:8000';
-
-        // Get page content
-        const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => document.body.innerText
-        });
-
-        const content = results[0].result;
-
-        // Check for video
-        const [videoResult] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                return window.getVideoTimestamp ? window.getVideoTimestamp() : { hasVideo: false };
-            }
-        });
-
-        const videoData = videoResult.result;
-
-        const dataToSend = {
-            url: tab.url,
-            title: tab.title,
-            content_type: 'page',
-            content: content,
-            selected_text: '',
-            links: [],
-            tags: videoData.hasVideo ? ['page', videoData.platform.toLowerCase()] : ['page'],
-            notes: 'Saved via context menu',
-            video_data: videoData.hasVideo ? {
-                platform: videoData.platform,
-                timestamp: videoData.timestamp,
-                duration: videoData.duration,
-                video_title: videoData.videoTitle,
-                video_url: videoData.videoUrl,
-                thumbnail_url: videoData.thumbnailUrl,
-                formatted_timestamp: formatTimestamp(videoData.timestamp)
-            } : null,
-            scraped_at: new Date().toISOString()
-        };
-
-        const response = await fetch(`${apiUrl}/api/scrape`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSend)
-        });
-
-        if (response.ok) {
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon48.png',
-                title: 'Content Saved',
-                message: 'Page content saved successfully!'
-            });
-        }
-    } catch (error) {
-        console.error('Error saving page:', error);
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Error',
-            message: 'Failed to save content: ' + error.message
-        });
-    }
-}
-
-// Listen for messages from popup
+// Handle messages from content scripts and popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'testConnection') {
-        testBackendConnection(request.apiUrl)
-            .then(result => sendResponse(result))
-            .catch(error => sendResponse({ success: false, error: error.message }));
-        return true;
-    }
+  if (request.action === 'saveMemoryToAPI') {
+    saveMemoryToAPI(request.data)
+      .then(result => {
+        sendResponse({ success: true, data: result });
+      })
+      .catch(error => {
+        console.error('Error saving to API:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async response
+  }
+
+  if (request.action === 'getMemoriesFromAPI') {
+    getMemoriesFromAPI(request.params)
+      .then(result => {
+        sendResponse({ success: true, data: result });
+      })
+      .catch(error => {
+        console.error('Error fetching from API:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (request.action === 'deleteMemoryFromAPI') {
+    deleteMemoryFromAPI(request.id)
+      .then(result => {
+        sendResponse({ success: true, data: result });
+      })
+      .catch(error => {
+        console.error('Error deleting from API:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  // Handle storage operations from content script
+  if (request.action === 'getFromStorage') {
+    chrome.storage.local.get(request.key)
+      .then(result => {
+        sendResponse({ success: true, data: result[request.key] });
+      })
+      .catch(error => {
+        console.error('Error getting from storage:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (request.action === 'setToStorage') {
+    chrome.storage.local.set({ [request.key]: request.value })
+      .then(() => {
+        sendResponse({ success: true });
+      })
+      .catch(error => {
+        console.error('Error setting to storage:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (request.action === 'getAuthUser') {
+    const user = authManager.getUser();
+    sendResponse({ success: true, user: user });
+    return true;
+  }
+
+  if (request.action === 'verifyAuth') {
+    authManager.verifySession()
+      .then(isAuthenticated => {
+        const user = authManager.getUser();
+        sendResponse({ success: true, authenticated: isAuthenticated, user: user });
+      })
+      .catch(error => {
+        console.error('Error verifying auth:', error);
+        sendResponse({ success: false, authenticated: false, user: null });
+      });
+    return true; // Keep channel open for async response
+  }
+
+  if (request.action === 'openAuthPage') {
+    authManager.openAuthPage();
+    sendResponse({ success: true });
+    return true;
+  }
+
+  return false;
 });
 
-async function testBackendConnection(apiUrl) {
-    try {
-        const response = await fetch(`${apiUrl}/health`);
-        if (response.ok) {
-            return { success: true };
-        }
-        return { success: false, error: 'Backend not responding' };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
+// Helper function to get cookies for API requests
+async function getCookiesForAPI() {
+  try {
+    const cookies = await chrome.cookies.getAll({
+      domain: '.vercel.app'
+    });
+
+    const cookieHeader = cookies
+      .filter(c => c.domain.includes('browserbaba') || c.domain.includes('vercel.app'))
+      .map(c => `${c.name}=${c.value}`)
+      .join('; ');
+
+    return cookieHeader;
+  } catch (error) {
+    console.error('Error getting cookies:', error);
+    return '';
+  }
 }
 
-// Helper function to format timestamp
-function formatTimestamp(seconds) {
-    if (!seconds && seconds !== 0) return '0:00';
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    
-    if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+// API Functions
+async function saveMemoryToAPI(data) {
+  try {
+    // Get cookies for authentication
+    const cookieHeader = await getCookiesForAPI();
+
+    // Transform data to match API format
+    const payload = {
+      title: data.title || data.page_title || 'Untitled',
+      type: mapContentTypeToMemoryType(data.content_type),
+      url: data.url,
+      content: data.content || data.selected_text,
+      metadata: data.metadata || {},
+      source: 'extension',
+    };
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader;
     }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+
+    const response = await fetch(`${API_BASE_URL}/capture`, {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save memory');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving to API:', error);
+    throw error;
+  }
+}
+
+// Map extension content types to API memory types
+function mapContentTypeToMemoryType(contentType) {
+  const typeMap = {
+    'page': 'article',
+    'text': 'note',
+    'image': 'article',
+    'link': 'article',
+    'video': 'video',
+  };
+  return typeMap[contentType] || 'note';
+}
+
+async function getMemoriesFromAPI(params = {}) {
+  try {
+    const cookieHeader = await getCookiesForAPI();
+    const queryString = new URLSearchParams(params).toString();
+    const url = `${API_BASE_URL}/memories${queryString ? `?${queryString}` : ''}`;
+
+    const headers = {};
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader;
+    }
+
+    const response = await fetch(url, {
+      headers: headers,
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch memories');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching from API:', error);
+    throw error;
+  }
+}
+
+async function deleteMemoryFromAPI(id) {
+  try {
+    const cookieHeader = await getCookiesForAPI();
+
+    const headers = {};
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/memories?id=${id}`, {
+      method: 'DELETE',
+      headers: headers,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete memory');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting from API:', error);
+    throw error;
+  }
 }

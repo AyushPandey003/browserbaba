@@ -1,19 +1,10 @@
-import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { schema } from "@/lib/db/schema";
+import * as schema from "@/lib/db/schema";
 
-// Load environment variables for Node.js runtime (used in seed scripts)
-// In Edge runtime, environment variables are automatically available
-if (typeof window === 'undefined' && !process.env.VERCEL) {
-  config({ path: '.env' });
-}
+// Edge-compatible configuration - don't use dotenv in Edge runtime
+// Next.js automatically loads environment variables
+const sql = neon(process.env.DATABASE_URL!);
 
-// Validate DATABASE_URL
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
-
-// Create the database connection
-const sql = neon(process.env.DATABASE_URL);
+// Provide the schema to drizzle so the returned `db` object is properly typed
 export const db = drizzle(sql, { schema });

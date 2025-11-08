@@ -1,77 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Content Scraper</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Capture</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Web Content Scraper</h1>
-
-        <div class="config-section">
-            <label for="apiUrl">Backend API URL:</label>
-            <input type="text" id="apiUrl" placeholder="http://localhost:8000" />
-            <button id="saveConfig">Save Config</button>
-        </div>
-
-        <div class="status" id="status"></div>
-
-        <div class="scrape-section">
-            <h2>Current Page</h2>
-            <div id="pageInfo">
-                <p><strong>URL:</strong> <span id="currentUrl">-</span></p>
-                <p><strong>Title:</strong> <span id="currentTitle">-</span></p>
-            </div>
-
-            <!-- Video Information Section -->
-            <div id="videoInfo" style="display: none;" class="video-info">
-                <h3>🎥 Video Detected</h3>
-                <p><strong>Platform:</strong> <span id="videoPlatform">-</span></p>
-                <p><strong>Current Time:</strong> <span id="videoTimestamp">-</span></p>
-                <p><strong>Duration:</strong> <span id="videoDuration">-</span></p>
-                <p><strong>Title:</strong> <span id="videoTitle">-</span></p>
-            </div>
-
-            <button id="saveVideoButton" class="video-button" style="display: none;">
-                📌 Save Video Bookmark
-            </button>
-
-            <div class="form-group">
-                <label for="contentType">What to scrape:</label>
-                <select id="contentType">
-                    <option value="page">Entire Page</option>
-                    <option value="selection">Selected Text</option>
-                    <option value="links">All Links</option>
-                    <option value="custom">Custom Selector</option>
-                </select>
-            </div>
-
-            <div class="form-group" id="customSelectorGroup" style="display: none;">
-                <label for="customSelector">CSS Selector:</label>
-                <input type="text" id="customSelector" placeholder="e.g., .article-content" />
-            </div>
-
-            <div class="form-group">
-                <label for="tags">Tags (comma-separated):</label>
-                <input type="text" id="tags" placeholder="research, important, etc." />
-            </div>
-
-            <div class="form-group">
-                <label for="notes">Notes:</label>
-                <textarea id="notes" rows="3" placeholder="Add notes about this content..."></textarea>
-            </div>
-
-            <button id="scrapeButton" class="primary-button">Save Content</button>
-        </div>
-
-        <div class="saved-items">
-            <h2>Recently Saved</h2>
-            <div id="recentItems"></div>
-        </div>
+  <div class="popup-container">
+    <div class="header">
+      <h1>Memory Capture</h1>
+      <p class="subtitle">Save anything, anywhere</p>
     </div>
 
-    <script src="popup.js"></script>
+    <!-- Authentication Section -->
+    <div id="auth-section" class="auth-section">
+      <div class="auth-message">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+        <h3>Sign in to Continue</h3>
+        <p>Please sign in to save and view your memories</p>
+      </div>
+      <button id="login-btn" class="auth-btn primary">
+        Sign in to BrowseBaba
+      </button>
+      <button id="verify-btn" class="auth-btn secondary">
+        Verify Session
+      </button>
+    </div>
+
+    <!-- User Info Section -->
+    <div id="user-info" class="user-info hidden">
+      <div class="user-avatar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <span id="user-name">User</span>
+      <button id="logout-btn" class="logout-btn" title="Sign out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div id="error-banner" class="error-banner" style="display: none;"></div>
+
+    <div class="quick-actions">
+      <button id="save-page-btn" class="save-page-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        <span id="save-btn-text">Save This Page</span>
+      </button>
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="Search memories...">
+    </div>
+
+    <div class="stats-bar">
+      <span id="stats-text">Loading...</span>
+    </div>
+
+    <div class="memories-list" id="memories-list">
+      <div class="loading">Loading memories...</div>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

@@ -11,6 +11,8 @@ import (
 	"api/config"
 	"api/middleware"
 	"api/models"
+
+	"github.com/google/uuid"
 )
 
 // CreateMemory handles POST /api/memories (from extension)
@@ -26,15 +28,29 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request - Skip URL validation if it's a chrome:// or extension:// URL
+	// Set defaults if missing
+	if req.Title == "" {
+		req.Title = "Untitled"
+	}
+	if req.ContentType == "" {
+		req.ContentType = "page"
+	}
+
+	// Validate request - Skip URL validation if it's a special browser URL
 	if err := middleware.ValidateStruct(req); err != nil {
-		// If URL validation fails, check if it's a special browser URL
-		if strings.Contains(err.Error(), "url") &&
-			(strings.HasPrefix(req.URL, "chrome://") ||
+		// If URL validation fails, check if it's a special browser URL or missing
+		if strings.Contains(err.Error(), "url") || strings.Contains(err.Error(), "URL") {
+			if req.URL != "" && (strings.HasPrefix(req.URL, "chrome://") ||
 				strings.HasPrefix(req.URL, "chrome-extension://") ||
 				strings.HasPrefix(req.URL, "edge://") ||
 				strings.HasPrefix(req.URL, "about:")) {
-			// Skip URL validation for browser-specific URLs
+				// Skip validation for browser-specific URLs
+			} else if req.URL == "" {
+				req.URL = "unknown" // Set default for missing URL
+			} else {
+				middleware.ErrorResponse(w, http.StatusBadRequest, "Validation error: "+err.Error())
+				return
+			}
 		} else {
 			middleware.ErrorResponse(w, http.StatusBadRequest, "Validation error: "+err.Error())
 			return
@@ -57,22 +73,24 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 	// Prepare tags string
 	tagsString := strings.Join(req.Tags, ",")
 
+	// Generate UUID for the new memory
+	memoryID := uuid.New().String()
+
 	// Insert memory
 	query := `
 		INSERT INTO memories (
-			url, title, content_type, content, selected_text,
+			id, url, title, content_type, content, selected_text,
 			context_before, context_after, full_context,
 			element_type, page_section, xpath, tags, notes,
 			created_at, updated_at, scraped_at,
 			video_platform, video_timestamp, video_duration,
 			video_title, video_url, thumbnail_url, formatted_timestamp
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-			$14, $15, $16, $17, $18, $19, $20, $21, $22, $23
-		) RETURNING id
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+			$15, $16, $17, $18, $19, $20, $21, $22, $23, $24
+		)
 	`
 
-	var memoryID int64
 	var videoPlatform, videoTitle, videoURL, thumbnailURL, formattedTime sql.NullString
 	var videoTimestamp, videoDuration sql.NullInt64
 
@@ -86,16 +104,16 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		formattedTime = sql.NullString{String: req.VideoData.FormattedTimestamp, Valid: true}
 	}
 
-	err = tx.QueryRow(
+	_, err = tx.Exec(
 		query,
-		req.URL, req.Title, req.ContentType, req.Content, req.SelectedText,
+		memoryID, nullString(req.URL), req.Title, req.ContentType, nullString(req.Content), nullString(req.SelectedText),
 		nullString(req.ContextBefore), nullString(req.ContextAfter), nullString(req.FullContext),
 		nullString(req.ElementType), nullString(req.PageSection), nullString(req.XPath),
 		nullString(tagsString), nullString(req.Notes),
 		now, now, req.ScrapedAt,
 		videoPlatform, videoTimestamp, videoDuration,
 		videoTitle, videoURL, thumbnailURL, formattedTime,
-	).Scan(&memoryID)
+	)
 
 	if err != nil {
 		middleware.ErrorResponse(w, http.StatusInternalServerError, "Failed to create memory: "+err.Error())
@@ -254,13 +272,13 @@ func GetMemoryByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	memoryID, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		middleware.ErrorResponse(w, http.StatusBadRequest, "Invalid memory ID")
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		middleware.ErrorResponse(w, http.StatusBadRequest, "Invalid memory ID format")
 		return
 	}
 
-	memory, err := getMemoryByID(memoryID)
+	memory, err := getMemoryByID(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			middleware.ErrorResponse(w, http.StatusNotFound, "Memory not found")
@@ -286,9 +304,9 @@ func UpdateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	memoryID, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		middleware.ErrorResponse(w, http.StatusBadRequest, "Invalid memory ID")
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		middleware.ErrorResponse(w, http.StatusBadRequest, "Invalid memory ID format")
 		return
 	}
 
@@ -324,7 +342,7 @@ func UpdateMemory(w http.ResponseWriter, r *http.Request) {
 	args = append(args, time.Now())
 	argCount++
 
-	args = append(args, memoryID)
+	args = append(args, id)
 
 	query := "UPDATE memories SET " + strings.Join(updates, ", ") + " WHERE id = $" + strconv.Itoa(argCount)
 
@@ -340,7 +358,7 @@ func UpdateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	memory, _ := getMemoryByID(memoryID)
+	memory, _ := getMemoryByID(id)
 	middleware.SuccessResponse(w, http.StatusOK, "Memory updated successfully", memory)
 }
 
@@ -357,14 +375,14 @@ func DeleteMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	memoryID, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		middleware.ErrorResponse(w, http.StatusBadRequest, "Invalid memory ID")
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		middleware.ErrorResponse(w, http.StatusBadRequest, "Invalid memory ID format")
 		return
 	}
 
 	query := "DELETE FROM memories WHERE id = $1"
-	result, err := config.GetDB().Exec(query, memoryID)
+	result, err := config.GetDB().Exec(query, id)
 	if err != nil {
 		middleware.ErrorResponse(w, http.StatusInternalServerError, "Failed to delete memory")
 		return
@@ -534,7 +552,7 @@ func GetStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helper functions
-func getMemoryByID(id int64) (models.MemoryResponse, error) {
+func getMemoryByID(id string) (models.MemoryResponse, error) {
 	query := `
 		SELECT id, url, title, content_type, content, selected_text,
 			context_before, context_after, full_context,
