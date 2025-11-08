@@ -1,11 +1,19 @@
 {
-  "buildCommand": "pnpm build",
-  "devCommand": "pnpm dev",
-  "installCommand": "pnpm install",
-  "framework": "nextjs",
-  "functions": {
-    "api/**/*.py": {
-      "excludeFiles": "{.next,.git,node_modules}/**"
+  "buildCommand": "next build",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "api/index.go",
+      "use": "@vercel/go"
     }
-  }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.go"
+    }
+  ]
 }
