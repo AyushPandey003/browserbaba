@@ -73,36 +73,60 @@ func ConnectDB() error {
 // createTables creates the necessary tables if they don't exist
 func createTables() error {
 	query := `
-	CREATE TABLE IF NOT EXISTS items (
+	-- Main memories table for browser extension data
+	CREATE TABLE IF NOT EXISTS memories (
 		id SERIAL PRIMARY KEY,
-		title VARCHAR(100) NOT NULL,
-		description TEXT,
-		status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'in_progress', 'completed')),
-		priority VARCHAR(10) NOT NULL CHECK (priority IN ('low', 'medium', 'high')),
-		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
-	CREATE INDEX IF NOT EXISTS idx_items_priority ON items(priority);
-	CREATE INDEX IF NOT EXISTS idx_items_created_at ON items(created_at DESC);
-
-	CREATE TABLE IF NOT EXISTS scraped_data (
-		id SERIAL PRIMARY KEY,
-		user_id VARCHAR(255) NOT NULL,
 		url TEXT NOT NULL,
-		title VARCHAR(500) NOT NULL,
-		content TEXT NOT NULL,
-		metadata JSONB,
+		title TEXT NOT NULL,
+		content_type VARCHAR(50) NOT NULL CHECK (content_type IN ('page', 'selection', 'video_timestamp', 'links', 'custom')),
+		content TEXT,
+		selected_text TEXT,
+		context_before TEXT,
+		context_after TEXT,
+		full_context TEXT,
+		element_type VARCHAR(50),
+		page_section VARCHAR(50),
+		xpath TEXT,
 		tags TEXT,
+		notes TEXT,
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		scraped_at TIMESTAMP NOT NULL,
+		
+		-- Video-specific fields
+		video_platform VARCHAR(50),
+		video_timestamp BIGINT,
+		video_duration BIGINT,
+		video_title TEXT,
+		video_url TEXT,
+		thumbnail_url TEXT,
+		formatted_timestamp VARCHAR(20)
 	);
 
-	CREATE INDEX IF NOT EXISTS idx_scraped_data_user_id ON scraped_data(user_id);
-	CREATE INDEX IF NOT EXISTS idx_scraped_data_url ON scraped_data(url);
-	CREATE INDEX IF NOT EXISTS idx_scraped_data_created_at ON scraped_data(created_at DESC);
-	CREATE INDEX IF NOT EXISTS idx_scraped_data_metadata ON scraped_data USING GIN (metadata);
+	-- Links table for storing extracted links
+	CREATE TABLE IF NOT EXISTS links (
+		id SERIAL PRIMARY KEY,
+		memory_id INTEGER NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+		text TEXT,
+		href TEXT NOT NULL,
+		link_title TEXT,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	-- Indexes for better query performance
+	CREATE INDEX IF NOT EXISTS idx_memories_url ON memories(url);
+	CREATE INDEX IF NOT EXISTS idx_memories_content_type ON memories(content_type);
+	CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_memories_scraped_at ON memories(scraped_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_memories_tags ON memories USING gin(to_tsvector('english', COALESCE(tags, '')));
+	CREATE INDEX IF NOT EXISTS idx_memories_content ON memories USING gin(to_tsvector('english', COALESCE(content, '')));
+	CREATE INDEX IF NOT EXISTS idx_memories_video_platform ON memories(video_platform) WHERE video_platform IS NOT NULL;
+	CREATE INDEX IF NOT EXISTS idx_links_memory_id ON links(memory_id);
+
+	-- Full-text search index
+	CREATE INDEX IF NOT EXISTS idx_memories_search ON memories USING gin(
+		to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(content, '') || ' ' || COALESCE(selected_text, '') || ' ' || COALESCE(tags, ''))
+	);
 	`
 
 	_, err := DB.Exec(query)

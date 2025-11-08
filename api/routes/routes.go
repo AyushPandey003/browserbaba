@@ -25,20 +25,28 @@ func routeHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
 	// Health check endpoint
-	if path == "/api" || path == "/api/" {
+	if path == "/api" || path == "/api/" || path == "/health" {
 		handleHealthCheck(w, r)
 		return
 	}
 
-	// Item routes
-	if strings.HasPrefix(path, "/api/items") {
-		handleItemRoutes(w, r, path)
+	// Extension endpoints - Main API
+	if strings.HasPrefix(path, "/api/memories") {
+		if path == "/api/memories/search" {
+			controllers.SearchMemories(w, r)
+			return
+		}
+		if path == "/api/memories/stats" {
+			controllers.GetStats(w, r)
+			return
+		}
+		handleMemoryRoutes(w, r, path)
 		return
 	}
 
-	// Scraped data routes (protected with JWT)
-	if strings.HasPrefix(path, "/api/scraped") {
-		handleScrapedDataRoutes(w, r, path)
+	// Legacy scrape endpoint (maps to memories)
+	if path == "/api/scrape" {
+		controllers.CreateMemory(w, r)
 		return
 	}
 
@@ -54,26 +62,34 @@ func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 
 	response := map[string]interface{}{
 		"success": true,
-		"message": "API is running",
-		"version": "1.0.0",
+		"message": "BrowseBaba API is running",
+		"version": "2.0.0",
+		"purpose": "Browser Extension Backend",
 		"endpoints": map[string]string{
-			"GET /api":                     "Health check",
-			"POST /api/items":              "Create an item",
-			"GET /api/items":               "Get all items",
-			"GET /api/items?id=":           "Get item by ID",
-			"PUT /api/items?id=":           "Update item by ID",
-			"DELETE /api/items?id=":        "Delete item by ID",
-			"POST /api/scraped":            "Create scraped data (JWT required)",
-			"GET /api/scraped":             "Get all scraped data (JWT required)",
-			"GET /api/scraped?id=":         "Get scraped data by ID (JWT required)",
-			"PUT /api/scraped?id=":         "Update scraped data (JWT required)",
-			"DELETE /api/scraped?id=":      "Delete scraped data (JWT required)",
+			"GET /api":                      "Health check",
+			"GET /health":                   "Health check",
+			"POST /api/scrape":              "Save content from extension (legacy)",
+			"POST /api/memories":            "Save content from extension",
+			"GET /api/memories":             "Get all saved memories",
+			"GET /api/memories?id=":         "Get memory by ID",
+			"PUT /api/memories?id=":         "Update memory by ID",
+			"DELETE /api/memories?id=":      "Delete memory by ID",
+			"POST /api/memories/search":     "Full-text search memories",
+			"GET /api/memories/stats":       "Get usage statistics",
+		},
+		"features": []string{
+			"Save web content, selections, and video timestamps",
+			"Full-text search across all saved content",
+			"Tag-based organization",
+			"Video platform support (YouTube, Netflix, etc.)",
+			"Context-aware text capture",
+			"Link extraction and storage",
 		},
 	}
 	middleware.JSONResponse(w, http.StatusOK, response)
 }
 
-func handleItemRoutes(w http.ResponseWriter, r *http.Request, path string) {
+func handleMemoryRoutes(w http.ResponseWriter, r *http.Request, path string) {
 	// Check if ID is provided in query string
 	id := r.URL.Query().Get("id")
 
@@ -81,67 +97,29 @@ func handleItemRoutes(w http.ResponseWriter, r *http.Request, path string) {
 	switch r.Method {
 	case http.MethodGet:
 		if id != "" {
-			controllers.GetItemByID(w, r)
+			controllers.GetMemoryByID(w, r)
 		} else {
-			controllers.GetAllItems(w, r)
+			controllers.GetAllMemories(w, r)
 		}
 	case http.MethodPost:
 		if id != "" {
 			middleware.ErrorResponse(w, http.StatusBadRequest, "ID should not be provided for POST requests")
 			return
 		}
-		controllers.CreateItem(w, r)
+		controllers.CreateMemory(w, r)
 	case http.MethodPut:
 		if id == "" {
-			middleware.ErrorResponse(w, http.StatusBadRequest, "Item ID is required")
+			middleware.ErrorResponse(w, http.StatusBadRequest, "Memory ID is required")
 			return
 		}
-		controllers.UpdateItem(w, r)
+		controllers.UpdateMemory(w, r)
 	case http.MethodDelete:
 		if id == "" {
-			middleware.ErrorResponse(w, http.StatusBadRequest, "Item ID is required")
+			middleware.ErrorResponse(w, http.StatusBadRequest, "Memory ID is required")
 			return
 		}
-		controllers.DeleteItem(w, r)
+		controllers.DeleteMemory(w, r)
 	default:
 		middleware.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
-}
-
-func handleScrapedDataRoutes(w http.ResponseWriter, r *http.Request, path string) {
-	// Apply JWT authentication middleware for all scraped data routes
-	middleware.JWTAuth(func(w http.ResponseWriter, r *http.Request) {
-		// Check if ID is provided in query string
-		id := r.URL.Query().Get("id")
-
-		// Route based on method and ID presence
-		switch r.Method {
-		case http.MethodGet:
-			if id != "" {
-				controllers.GetScrapedDataByID(w, r)
-			} else {
-				controllers.GetAllScrapedData(w, r)
-			}
-		case http.MethodPost:
-			if id != "" {
-				middleware.ErrorResponse(w, http.StatusBadRequest, "ID should not be provided for POST requests")
-				return
-			}
-			controllers.CreateScrapedData(w, r)
-		case http.MethodPut:
-			if id == "" {
-				middleware.ErrorResponse(w, http.StatusBadRequest, "Scraped data ID is required")
-				return
-			}
-			controllers.UpdateScrapedData(w, r)
-		case http.MethodDelete:
-			if id == "" {
-				middleware.ErrorResponse(w, http.StatusBadRequest, "Scraped data ID is required")
-				return
-			}
-			controllers.DeleteScrapedData(w, r)
-		default:
-			middleware.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
-		}
-	})(w, r)
 }
