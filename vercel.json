@@ -1,0 +1,11 @@
+{
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "functions": {
+    "api/**/*.py": {
+      "excludeFiles": "{.next,.git,node_modules}/**"
+    }
+  }
+}

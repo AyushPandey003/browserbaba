@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+backend/
+api/__pycache__/index.cpython-312.pyc
+api/__pycache__/index.cpython-313.pyc
+C:/Users/ayush/Desktop/BrowseBaba/browserbaba/uirefrence
+uirefrence/index.html

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Synapse Reader View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;family=Lora:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#4A6C8C", // Muted, intelligent blue
+              "background-light": "#F8F7F4", // Sepia/Off-white
+              "background-dark": "#101922",
+              "text-light": "#333333", // Dark charcoal gray
+              "text-dark": "#D1D5DB", // Light gray for dark mode
+              "meta-light": "#6B7280",
+              "meta-dark": "#9dabb9",
+              "chip-light": "#E5E7EB",
+              "chip-dark": "#283039",
+            },
+            fontFamily: {
+              "display": ["Inter", "sans-serif"],
+              "serif": ["Lora", "serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3 {
+            font-family: 'Lora', serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex min-h-screen w-full flex-col">
+<!-- Reading Progress Bar -->
+<div class="fixed top-0 left-0 w-full h-1 bg-primary/20 dark:bg-primary/30 z-50">
+<div class="h-1 bg-primary" style="width: 45%;"></div>
+</div>
+<!-- Toolbar -->
+<header class="fixed top-0 left-0 w-full z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="mx-auto flex max-w-4xl justify-between gap-2 px-4 py-3">
+<div class="flex items-center gap-2">
+<button class="p-2 text-text-light dark:text-text-dark rounded-full hover:bg-gray-200 dark:hover:bg-white/10">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<p class="hidden sm:block text-sm font-medium text-meta-light dark:text-meta-dark truncate">The Psychology of Deep Work...</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-text-light dark:text-text-dark rounded-full hover:bg-gray-200 dark:hover:bg-white/10">
+<span class="material-symbols-outlined text-2xl">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex h-full grow flex-col justify-center px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+<div class="mx-auto flex w-full max-w-[720px] flex-col">
+<!-- Tags / Chips -->
+<div class="flex flex-wrap gap-2 pb-4">
+<div class="flex h-7 shrink-0 items-center justify-center gap-x-2 rounded-full bg-chip-light dark:bg-chip-dark px-3">
+<p class="text-text-light dark:text-text-dark text-xs font-medium">Productivity</p>
+</div>
+<div class="flex h-7 shrink-0 items-center justify-center gap-x-2 rounded-full bg-chip-light dark:bg-chip-dark px-3">
+<p class="text-text-light dark:text-text-dark text-xs font-medium">Psychology</p>
+</div>
+<div class="flex h-7 shrink-0 items-center justify-center gap-x-2 rounded-full bg-chip-light dark:bg-chip-dark px-3">
+<p class="text-text-light dark:text-text-dark text-xs font-medium">Deep Work</p>
+</div>
+</div>
+<!-- Headline Text -->
+<h1 class="font-serif text-3xl font-bold leading-tight text-text-light dark:text-text-dark md:text-4xl">The Psychology of Deep Work: A Guide to Focused Success</h1>
+<!-- Meta Text -->
+<p class="pt-3 pb-8 text-sm font-normal text-meta-light dark:text-meta-dark">Source: synapse.io | Author: Cal Newport | Published: Jan 5, 2016</p>
+<!-- Article Body -->
+<article class="prose prose-lg lg:prose-xl max-w-none text-text-light dark:text-text-dark prose-headings:text-text-light dark:prose-headings:text-text-dark prose-a:text-primary dark:prose-a:text-primary prose-strong:text-text-light dark:prose-strong:text-text-dark prose-blockquote:text-meta-light dark:prose-blockquote:text-meta-dark" style="font-size: 1.125rem; line-height: 1.8;">
+<p>In an increasingly distracting world, the ability to focus without distraction on a cognitively demanding task is a skill that is becoming both rarer and more valuable. Cal Newport, in his seminal work, calls this skill "deep work." It's the key to unlocking your cognitive potential and producing high-quality work in less time.</p>
+<p>Deep work is not just about avoiding social media. It's about structuring your life to facilitate long periods of uninterrupted concentration. This requires a fundamental shift in mindset, from being reactive to being intentional about how you spend your time and mental energy.</p>
+<h2>The Four Rules of Deep Work</h2>
+<p>Newport outlines four practical rules to cultivate a deep work habit. These aren't just tips; they are a framework for re-engineering your professional life to thrive in the 21st-century economy.</p>
+<ol>
+<li><strong>Work Deeply:</strong> Decide on your depth philosophy. Will you be monastic, bimodal, rhythmic, or journalistic? Choose a structure that fits your life and stick to it.</li>
+<li><strong>Embrace Boredom:</strong> Your ability to concentrate is a muscle. If you constantly feed it with novel stimuli, it will weaken. Practice being bored and resist the urge to pull out your phone at the slightest lull.</li>
+<li><strong>Quit Social Media:</strong> Perform a cost-benefit analysis of the tools you use. If a tool's negative impact on your ability to focus outweighs its benefits, you should be ruthless in cutting it out.</li>
+<li><strong>Drain the Shallows:</strong> Shallow work (emails, meetings, administrative tasks) is unavoidable, but it must be contained. Schedule your day meticulously and quantify the depth of every activity.</li>
+</ol>
+<blockquote class="border-l-4 border-primary/50 pl-4 italic">
+<p>"To produce at your peak level, you need to work for extended periods with full concentration on a single task free from distraction. Put another way, the type of work that optimizes your performance is deep work."</p>
+<cite class="not-italic">— Cal Newport</cite>
+</blockquote>
+<p>Adopting a deep work ethic is not easy. It requires discipline, planning, and a commitment to valuing your attention. However, the rewards—in terms of productivity, skill improvement, and professional satisfaction—are immense. By mastering the art of deep work, you are not just getting more done; you are cultivating a life of profound focus and meaning.</p>
+</article>
+</div>
+</main>
+</div>
+</body></html>
