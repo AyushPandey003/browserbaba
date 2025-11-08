@@ -1,11 +1,13 @@
 'use client';
 
-import { Brain, LayoutDashboard, BookmarkIcon, Tag, Settings, Plus, Search } from 'lucide-react';
+import { Brain, LayoutDashboard, BookmarkIcon, Tag, Settings, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from '@/lib/auth-client';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -20,7 +22,7 @@ export function Sidebar() {
       <div className="flex flex-col gap-8 h-full">
         {/* Logo */}
         <div className="flex items-center gap-3 px-3">
-          <Brain className="text-[#2b8cee] w-8 h-8" />
+          <Brain className="text-primary w-8 h-8" />
           <h1 className="text-white text-xl font-bold">Synapse</h1>
         </div>
 
@@ -28,11 +30,20 @@ export function Sidebar() {
           {/* User Profile */}
           <div className="flex flex-col gap-3">
             <div 
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 mx-auto bg-linear-to-br from-blue-500 to-purple-600"
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 mx-auto"
+              style={{
+                backgroundImage: session?.user?.image 
+                  ? `url(${session.user.image})` 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+              }}
             />
             <div className="flex flex-col text-center">
-              <h2 className="text-white text-base font-medium leading-normal">Guest User</h2>
-              <p className="text-gray-400 text-sm font-normal leading-normal">guest@synapse.io</p>
+              <h2 className="text-white text-base font-medium leading-normal">
+                {session?.user?.name || 'Guest User'}
+              </h2>
+              <p className="text-gray-400 text-sm font-normal leading-normal">
+                {session?.user?.email || 'guest@synapse.io'}
+              </p>
             </div>
           </div>
 
@@ -48,8 +59,8 @@ export function Sidebar() {
                   href={item.href}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-200 ${
                     isActive
-                      ? 'bg-[#2b8cee]/20 text-[#2b8cee]'
-                      : 'text-gray-300 hover:bg-[#2b8cee]/10 hover:text-white'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-gray-300 hover:bg-primary/10 hover:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -61,8 +72,7 @@ export function Sidebar() {
         </div>
 
         {/* Add New Button */}
-        <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#2b8cee] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#2b8cee]/90 transition-colors duration-200">
-          <Plus className="w-5 h-5 mr-2" />
+        <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors duration-200">
           <span className="truncate">Add New</span>
         </button>
       </div>

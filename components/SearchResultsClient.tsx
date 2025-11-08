@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Filter, Calendar, Tag, SortAsc, X, Lightbulb, ExternalLink } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Search, X, Lightbulb } from 'lucide-react';
 import type { Memory } from '@/lib/types';
 import Link from 'next/link';
 
@@ -136,215 +135,208 @@ export default function SearchResultsClient({
   };
 
   return (
-    <div className="flex min-h-screen bg-[#101922]">
-      {/* Search Results Content */}
-      <div className="flex-1">
+    <main className="flex-1 p-6 lg:p-10 bg-background-dark">
+      <div className="max-w-4xl mx-auto">
         {/* Search Bar */}
-        <div className="sticky top-0 z-30 bg-[#101922] border-b border-gray-800 px-6 py-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div className="mb-8">
+          <label className="flex flex-col min-w-40 h-12 w-full">
+            <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
+              <div className="text-gray-400 dark:text-gray-500 flex bg-gray-200 dark:bg-gray-800 items-center justify-center pl-4 rounded-l-lg">
+                <Search className="w-5 h-5" />
+              </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-none text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary border-none bg-gray-200 dark:bg-gray-800 h-full placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-base font-normal leading-normal"
                 placeholder="Search your memories..."
-                className="w-full pl-12 pr-4 py-3 bg-[#283039] border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2b8cee] focus:border-transparent"
               />
-            </div>
-
-            {/* Filter Chips */}
-            <div className="flex flex-wrap items-center gap-2 mt-4">
-              {/* Date Filter */}
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-[#283039] hover:bg-[#323d48] border border-gray-700 rounded-lg text-sm text-gray-300 transition-colors">
-                  <Calendar className="w-4 h-4" />
-                  <span>Date: {dateFilter === 'all' ? 'All' : dateFilter}</span>
-                </button>
-                <div className="hidden group-hover:block absolute top-full mt-1 bg-[#1a232c] border border-gray-700 rounded-lg shadow-xl z-50 min-w-[150px]">
-                  {(['all', 'today', 'week', 'month', 'year'] as DateFilter[]).map(filter => (
-                    <button
-                      key={filter}
-                      onClick={() => setDateFilter(filter)}
-                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#283039] ${
-                        dateFilter === filter ? 'text-[#2b8cee]' : 'text-gray-300'
-                      }`}
-                    >
-                      {filter === 'all' ? 'All Time' : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                    </button>
-                  ))}
+              {searchQuery && (
+                <div className="flex items-center justify-center rounded-r-lg border-l-0 border-none bg-gray-200 dark:bg-gray-800 pr-4">
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              </div>
-
-              {/* Type Filter */}
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-[#283039] hover:bg-[#323d48] border border-gray-700 rounded-lg text-sm text-gray-300 transition-colors">
-                  <Filter className="w-4 h-4" />
-                  <span>Type: {typeFilter}</span>
-                </button>
-                <div className="hidden group-hover:block absolute top-full mt-1 bg-[#1a232c] border border-gray-700 rounded-lg shadow-xl z-50 min-w-[150px]">
-                  {(['all', 'article', 'video', 'product', 'note', 'todo'] as FilterType[]).map(type => (
-                    <button
-                      key={type}
-                      onClick={() => setTypeFilter(type)}
-                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#283039] capitalize ${
-                        typeFilter === type ? 'text-[#2b8cee]' : 'text-gray-300'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tags Filter */}
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-[#283039] hover:bg-[#323d48] border border-gray-700 rounded-lg text-sm text-gray-300 transition-colors">
-                  <Tag className="w-4 h-4" />
-                  <span>Tags {selectedTags.length > 0 && `(${selectedTags.length})`}</span>
-                </button>
-                <div className="hidden group-hover:block absolute top-full mt-1 bg-[#1a232c] border border-gray-700 rounded-lg shadow-xl z-50 min-w-[200px] max-h-64 overflow-y-auto">
-                  {allTags.map(tag => (
-                    <button
-                      key={tag}
-                      onClick={() => toggleTag(tag)}
-                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#283039] ${
-                        selectedTags.includes(tag) ? 'text-[#2b8cee]' : 'text-gray-300'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sort By */}
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-[#283039] hover:bg-[#323d48] border border-gray-700 rounded-lg text-sm text-gray-300 transition-colors">
-                  <SortAsc className="w-4 h-4" />
-                  <span>Sort: {sortBy}</span>
-                </button>
-                <div className="hidden group-hover:block absolute top-full mt-1 bg-[#1a232c] border border-gray-700 rounded-lg shadow-xl z-50 min-w-[150px]">
-                  {(['relevance', 'date', 'title'] as SortType[]).map(sort => (
-                    <button
-                      key={sort}
-                      onClick={() => setSortBy(sort)}
-                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#283039] capitalize ${
-                        sortBy === sort ? 'text-[#2b8cee]' : 'text-gray-300'
-                      }`}
-                    >
-                      {sort}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Clear Filters */}
-              {(typeFilter !== 'all' || dateFilter !== 'all' || selectedTags.length > 0) && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Clear filters
-                </button>
               )}
+            </div>
+          </label>
+        </div>
+
+        {/* Page Heading */}
+        <div className="flex flex-wrap justify-between gap-3 mb-6">
+          <div className="flex flex-col gap-2">
+            <p className="text-gray-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">Search results</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">
+              Found {filteredMemories.length} result{filteredMemories.length !== 1 ? 's' : ''}{searchQuery && ` for: '${searchQuery}'`}
+            </p>
+          </div>
+        </div>
+
+        {/* Chips/Filters */}
+        <div className="flex gap-2 p-1 overflow-x-auto mb-8">
+          {/* Date Filter */}
+          <div className="relative group">
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-gray-800 pl-3 pr-2 text-gray-800 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700">
+              <p className="text-sm font-medium leading-normal">Date</p>
+              <span className="text-base">▼</span>
+            </button>
+            <div className="hidden group-hover:block absolute top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl z-50 min-w-[150px]">
+              {(['all', 'today', 'week', 'month', 'year'] as DateFilter[]).map(filter => (
+                <button
+                  key={filter}
+                  onClick={() => setDateFilter(filter)}
+                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                    dateFilter === filter ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {filter === 'all' ? 'All Time' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Type Filter */}
+          <div className="relative group">
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-gray-800 pl-3 pr-2 text-gray-800 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700">
+              <p className="text-sm font-medium leading-normal">Type</p>
+              <span className="text-base">▼</span>
+            </button>
+            <div className="hidden group-hover:block absolute top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl z-50 min-w-[150px]">
+              {(['all', 'article', 'video', 'product', 'note', 'todo'] as FilterType[]).map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(type)}
+                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 capitalize ${
+                    typeFilter === type ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags Filter */}
+          <div className="relative group">
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-gray-800 pl-3 pr-2 text-gray-800 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700">
+              <p className="text-sm font-medium leading-normal">Tags</p>
+              <span className="text-base">▼</span>
+            </button>
+            <div className="hidden group-hover:block absolute top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl z-50 min-w-[200px] max-h-64 overflow-y-auto">
+              {allTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                    selectedTags.includes(tag) ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grow"></div>
+
+          {/* Sort By */}
+          <div className="relative group">
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-gray-800 pl-3 pr-2 text-gray-800 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700">
+              <p className="text-sm font-medium leading-normal">Sort by: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</p>
+              <span className="text-base">▼</span>
+            </button>
+            <div className="hidden group-hover:block absolute top-full mt-1 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl z-50 min-w-[150px]">
+              {(['relevance', 'date', 'title'] as SortType[]).map(sort => (
+                <button
+                  key={sort}
+                  onClick={() => setSortBy(sort)}
+                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 capitalize ${
+                    sortBy === sort ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {sort}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Results */}
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Found {filteredMemories.length} result{filteredMemories.length !== 1 ? 's' : ''}
-          </h2>
-
-          <div className="space-y-4">
-            {filteredMemories.map((memory) => (
-              <Link
-                key={memory.id}
-                href={`/read/${memory.id}`}
-                className="block group"
-              >
-                <div className="flex flex-col md:flex-row gap-4 p-4 bg-[#1a232c] hover:bg-[#1f2a36] border border-gray-800 rounded-xl transition-all duration-200 hover:border-gray-700">
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <h3 className="text-lg font-bold text-white leading-tight group-hover:text-[#2b8cee] transition-colors">
+        {/* Result Cards */}
+        <div className="space-y-6">
+          {filteredMemories.map((memory) => (
+            <Link
+              key={memory.id}
+              href={`/read/${memory.id}`}
+              className="block"
+            >
+              <div className="p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:shadow-lg hover:border-primary/50 dark:hover:border-primary/50 transition-all duration-200">
+                <div className="flex flex-col md:flex-row items-stretch justify-between gap-6">
+                  <div className="flex flex-[2_2_0px] flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">
+                        {memory.type ? (memory.type.charAt(0).toUpperCase() + memory.type.slice(1)) : 'Item'} from {memory.metadata?.source || memory.source || 'Unknown'} • Saved {new Date(memory.createdAt).toLocaleDateString()}
+                      </p>
+                      <p className="text-gray-900 dark:text-white text-lg font-bold leading-tight">
                         {memory.title}
-                      </h3>
-                      {memory.url && (
-                        <ExternalLink className="w-4 h-4 text-gray-500 shrink-0" />
-                      )}
-                    </div>
-
-                    <p className="text-sm text-gray-300 line-clamp-2 mb-4">
-                      {memory.content || 'No description available'}
-                    </p>
-
-                    {/* Match Reason */}
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-[#2b8cee]/10 text-[#2b8cee] text-xs mb-3">
-                      <Lightbulb className="w-4 h-4 shrink-0" />
-                      <p className="line-clamp-1">
-                        {getMatchReason(memory)}
-                        {' • Saved '}
-                        <strong className="font-semibold">{getRelativeTime(memory.createdAt)}</strong>
+                      </p>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm font-normal leading-normal mt-1">
+                        {memory.content || 'No description available'}
                       </p>
                     </div>
-
-                    {/* Tags and Meta */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {memory.source && (
-                        <span className="text-gray-500">
-                          {memory.source}
-                        </span>
-                      )}
-                      <span className="text-gray-600">•</span>
-                      <span className="text-gray-500">
-                        {new Date(memory.createdAt).toLocaleDateString()}
-                      </span>
-                      {(memory.metadata?.tags || []).map((tag: string) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded-full"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
+                    <div className="mt-auto flex flex-col gap-2">
+                      <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10 text-primary/80 dark:text-primary/90 text-xs">
+                        <Lightbulb className="w-4 h-4" />
+                        <p>
+                          {getMatchReason(memory)}
+                          {' and saved '}
+                          <strong className="font-semibold">{getRelativeTime(memory.createdAt)}</strong>
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {(memory.metadata?.tags || []).map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-
-                  {/* Thumbnail */}
                   {memory.metadata?.thumbnail && (
                     <div
-                      className="w-full md:w-48 h-32 bg-center bg-no-repeat bg-cover rounded-lg shrink-0"
+                      className="w-full md:w-auto bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 min-w-[200px]"
                       style={{ backgroundImage: `url(${memory.metadata.thumbnail})` }}
                     />
                   )}
                 </div>
-              </Link>
-            ))}
-
-            {filteredMemories.length === 0 && (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-800 flex items-center justify-center">
-                  <Search className="w-10 h-10 text-gray-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-400 mb-2">No results found</h3>
-                <p className="text-gray-500 mb-6">
-                  Try adjusting your filters or search query
-                </p>
-                <button
-                  onClick={clearFilters}
-                  className="px-4 py-2 bg-[#2b8cee] hover:bg-[#3a9cff] text-white rounded-lg transition-colors"
-                >
-                  Clear all filters
-                </button>
               </div>
-            )}
-          </div>
+            </Link>
+          ))}
+
+          {filteredMemories.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                <Search className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-400 mb-2">No results found</h3>
+              <p className="text-gray-500 dark:text-gray-500 mb-6">
+                Try adjusting your filters or search query
+              </p>
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
