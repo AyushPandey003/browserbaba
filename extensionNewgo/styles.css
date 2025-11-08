@@ -1,0 +1,265 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    width: 400px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.container {
+    padding: 16px;
+}
+
+h1 {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 8px;
+}
+
+h2 {
+    font-size: 16px;
+    color: #555;
+    margin: 16px 0 12px 0;
+}
+
+.config-section {
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.config-section label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #555;
+}
+
+.config-section input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.status {
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    display: none;
+}
+
+.status.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    display: block;
+}
+
+.status.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    display: block;
+}
+
+.scrape-section {
+    margin: 16px 0;
+}
+
+#pageInfo {
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 12px;
+}
+
+#pageInfo p {
+    margin: 4px 0;
+    word-wrap: break-word;
+}
+
+#pageInfo strong {
+    color: #555;
+}
+
+#currentUrl, #currentTitle {
+    color: #2196F3;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #555;
+}
+
+.form-group select,
+.form-group input[type="text"],
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.form-group select:focus,
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#saveConfig {
+    background: #2196F3;
+    color: white;
+    width: 100%;
+}
+
+#saveConfig:hover {
+    background: #1976D2;
+}
+
+.primary-button {
+    background: #4CAF50;
+    color: white;
+    width: 100%;
+}
+
+.primary-button:hover {
+    background: #45a049;
+}
+
+.primary-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.saved-items {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+}
+
+#recentItems {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.recent-item {
+    background: #f9f9f9;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    border-left: 3px solid #4CAF50;
+    font-size: 12px;
+}
+
+.recent-item .item-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.recent-item .item-url {
+    color: #666;
+    font-size: 11px;
+    word-wrap: break-word;
+}
+
+.recent-item .item-time {
+    color: #999;
+    font-size: 10px;
+    margin-top: 4px;
+}
+
+/* Video Information Styles */
+.video-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 12px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.video-info h3 {
+    font-size: 14px;
+    margin: 0 0 8px 0;
+    color: white;
+}
+
+.video-info p {
+    margin: 4px 0;
+    font-size: 12px;
+}
+
+.video-info strong {
+    color: rgba(255, 255, 255, 0.9);
+    margin-right: 4px;
+}
+
+.video-info span {
+    color: white;
+    font-weight: 500;
+}
+
+.video-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    width: 100%;
+    margin-bottom: 12px;
+    font-size: 14px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.video-button:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.video-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Highlight indicator */
+.browsebaba-highlight {
+    background-color: #ffeb3b !important;
+    padding: 2px;
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px rgba(255, 235, 59, 0.3);
+}
+

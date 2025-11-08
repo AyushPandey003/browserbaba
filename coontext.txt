@@ -1,0 +1,50 @@
+# **The Blueprint**
+
+You've explored the vision. Now, here is a framework to help you think about the engineering challenges and showcase your skills. A truly great "second brain" excels across these four dimensions.
+
+**Core Expectations:**
+
+Your final submission should consist of three demonstrable components:
+
+1. **(Must Have) A Web Application:** The core interface for your users.
+2. **(Could Have)A Browser Extension:** For effortless capture.
+3. **(Could Have) An MCP (Model-Context-Protocol) Server:** An endpoint for third-party AI integrations.
+
+---
+
+**Dimension 1: Speed & Reliability**
+
+A "second brain" that is slow or loses data is useless. Your system must feel instantaneous and be utterly reliable.
+
+- **Challenge:** Content ingestion (scraping, AI analysis) can be slow and prone to failure. How does your system handle saving a large, complex article without making the user wait? What happens if a website is down or blocks your system? A great system can process multiple items in the background and gracefully handles failures, so the user experience is always fast and smooth.
+
+**Dimension 2: Seamless Data Collection**
+
+The power of Synapse grows with every piece of information it contains. The easier it is to add data, the more powerful it becomes.
+
+- **Challenge:** How do you make saving content from anywhere truly effortless? The **Browser Extension** is a key part of this. But think bigger: the **MCP Server** is your chance to design a platform. What is the data 'contract' an external AI should use to send you data? How can you make that integration secure, simple, and powerful for all users?
+
+**Dimension 3: A Rich & Adaptive User Experience**
+
+Your application should feel like a visual, interactive extension of your mind, not a spreadsheet.
+
+- **Challenge:** A list of links is not enough. How does your interface adapt to different types of content? A saved book should look like a book. A recipe should be immediately usable. How do you present a saved article in a clean, focused **"reader mode"**? The user experience for both visualizing and retrieving data is paramount.
+
+**Dimension 4: Search Intelligence** 
+
+This is the heart of the project. Your goal is to make search feel like a conversation with an intelligent assistant. Revisit the queries from the first document—your success will be measured by how many of these your system can answer.
+
+- **Challenge:** *"that quote about new beginnings from the handwritten note I saved"*
+    - **Think About:** How can your system find text that isn't on a webpage, but locked inside a saved image or a screenshot?
+- **Challenge:** *"what Karpathy said about tokenization in that paper?"*
+    - **Think About:** A simple keyword search will fail here. How can your system understand the *meaning* and *context* of the full article to find the exact passage the user is thinking of?
+- **Challenge:** *"articles about AI agents I saved last month"*
+    - **Think About:** How can your search bar distinguish between keywords (AI agents), content types (articles), and timeframes (last month) in a single, natural language query?
+
+### **Chart Your Own Course**
+
+These dimensions are a guide, not a rigid checklist. They represent opportunities to showcase your skills. If a particular aspect of this problem sparks an idea—a novel user interface, a unique AI capability, or a clever architectural pattern—we encourage you to pursue it.
+
+While innovation is celebrated, a functional, end-to-end prototype that delivers on the core experience is the ultimate goal. The more complete and polished your final product is, the better.
+
+Let us know what you're building and why you think it's important. Good luck, and we're excited to see what you create.

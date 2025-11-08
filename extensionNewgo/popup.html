@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Content Scraper</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Web Content Scraper</h1>
+
+        <div class="config-section">
+            <label for="apiUrl">Backend API URL:</label>
+            <input type="text" id="apiUrl" placeholder="http://localhost:8000" />
+            <button id="saveConfig">Save Config</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="scrape-section">
+            <h2>Current Page</h2>
+            <div id="pageInfo">
+                <p><strong>URL:</strong> <span id="currentUrl">-</span></p>
+                <p><strong>Title:</strong> <span id="currentTitle">-</span></p>
+            </div>
+
+            <!-- Video Information Section -->
+            <div id="videoInfo" style="display: none;" class="video-info">
+                <h3>🎥 Video Detected</h3>
+                <p><strong>Platform:</strong> <span id="videoPlatform">-</span></p>
+                <p><strong>Current Time:</strong> <span id="videoTimestamp">-</span></p>
+                <p><strong>Duration:</strong> <span id="videoDuration">-</span></p>
+                <p><strong>Title:</strong> <span id="videoTitle">-</span></p>
+            </div>
+
+            <button id="saveVideoButton" class="video-button" style="display: none;">
+                📌 Save Video Bookmark
+            </button>
+
+            <div class="form-group">
+                <label for="contentType">What to scrape:</label>
+                <select id="contentType">
+                    <option value="page">Entire Page</option>
+                    <option value="selection">Selected Text</option>
+                    <option value="links">All Links</option>
+                    <option value="custom">Custom Selector</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="customSelectorGroup" style="display: none;">
+                <label for="customSelector">CSS Selector:</label>
+                <input type="text" id="customSelector" placeholder="e.g., .article-content" />
+            </div>
+
+            <div class="form-group">
+                <label for="tags">Tags (comma-separated):</label>
+                <input type="text" id="tags" placeholder="research, important, etc." />
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes:</label>
+                <textarea id="notes" rows="3" placeholder="Add notes about this content..."></textarea>
+            </div>
+
+            <button id="scrapeButton" class="primary-button">Save Content</button>
+        </div>
+
+        <div class="saved-items">
+            <h2>Recently Saved</h2>
+            <div id="recentItems"></div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
